@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PK Terrain</title>
+<meta name="description" content="Chaînage GPS des itinéraires et relevé des constats par PK">
+<meta name="theme-color" content="#C3161C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PK Terrain">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout : une colonne étroite (560 px max). La borne PK est le cœur de l'écran terrain ; les actions sont en grille 2 colonnes, au pouce. */
+:root{
+  --bg:#ECEEEA; --surface:#FFFFFF; --sunk:#F4F5F2; --ink:#12171A; --muted:#566065; --line:#D0D6D0;
+  --cap:#C3161C; --cap-ink:#FFFFFF; --btn:#12171A; --btn-ink:#FFFFFF;
+  --ok:#1C7A4A; --warn:#8F5A0C; --bad:#B42318; --here:#1A5FD0;
+  --ok-bg:#E2F1E8; --warn-bg:#FBEFD6; --bad-bg:#FBE4E1; --info-bg:#E4ECF8;
+  --shade:rgba(10,12,14,.45);
+  --f-display:"Barlow Condensed","Arial Narrow","Roboto Condensed",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --radius:14px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1113; --surface:#181D20; --sunk:#13171A; --ink:#ECEFEC; --muted:#9AA3A6; --line:#2C3438;
+    --cap:#D3262C; --cap-ink:#FFFFFF; --btn:#ECEFEC; --btn-ink:#0E1113;
+    --ok:#46BA7D; --warn:#E3A845; --bad:#F2695D; --here:#5E99FF;
+    --ok-bg:#13281D; --warn-bg:#2E2413; --bad-bg:#341A1A; --info-bg:#172236;
+    --shade:rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1113; --surface:#181D20; --sunk:#13171A; --ink:#ECEFEC; --muted:#9AA3A6; --line:#2C3438;
+  --cap:#D3262C; --cap-ink:#FFFFFF; --btn:#ECEFEC; --btn-ink:#0E1113;
+  --ok:#46BA7D; --warn:#E3A845; --bad:#F2695D; --here:#5E99FF;
+  --ok-bg:#13281D; --warn-bg:#2E2413; --bad-bg:#341A1A; --info-bg:#172236;
+  --shade:rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--here);outline-offset:2px}
+
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:calc(32px + env(safe-area-inset-bottom,0px));display:grid;gap:16px}
+
+/* En-tête */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding-block:calc(env(safe-area-inset-top,0px) + 10px) 10px;display:flex;align-items:center;gap:12px;min-width:0}
+.top h1,.top h2{margin:0;font:700 26px/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
+.top h2{font-size:22px;text-transform:none;letter-spacing:0;overflow-wrap:anywhere}
+.top .grow{flex:1;min-width:0}
+.top .sub{margin:3px 0 0;color:var(--muted);font-size:14px}
+.mark{width:22px;height:30px;border-radius:9px 9px 3px 3px;background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--line);position:relative;overflow:hidden;flex:none}
+.mark::before{content:"";position:absolute;inset:0 0 auto;height:10px;background:var(--cap)}
+.icon-btn{flex:none;width:44px;height:44px;border-radius:12px;border:0;background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--line);display:grid;place-items:center;color:var(--ink)}
+.icon-btn svg{width:22px;height:22px}
+
+/* Boutons */
+.btn{appearance:none;border:0;border-radius:12px;min-height:54px;padding:12px 14px;font:600 17px/1.2 var(--f-body);background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;gap:8px;width:100%;text-align:center}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.red{background:var(--cap);color:var(--cap-ink)}
+.btn.danger{background:var(--surface);color:var(--bad);box-shadow:inset 0 0 0 1.5px var(--bad)}
+.btn.danger[data-armed]{background:var(--bad);color:var(--surface)}
+.btn svg{width:20px;height:20px;flex:none}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.span2{grid-column:1/-1}
+
+/* Borne */
+.borne{background:var(--surface);border-radius:46px 46px 12px 12px;overflow:hidden;box-shadow:inset 0 0 0 1.5px var(--line),0 14px 28px -22px rgba(0,0,0,.55)}
+.borne-cap{background:var(--cap);color:var(--cap-ink);padding:16px 22px 11px;text-align:center;font:600 17px/1.15 var(--f-display);letter-spacing:.07em;text-transform:uppercase;text-wrap:balance;overflow-wrap:anywhere}
+.borne-body{padding:12px 16px 18px;text-align:center}
+.borne-k{font:700 18px/1 var(--f-display);letter-spacing:.32em;color:var(--muted);padding-left:.32em}
+.borne-pk{font:700 clamp(66px,23vw,118px)/.95 var(--f-display);font-variant-numeric:tabular-nums;margin-top:4px;letter-spacing:-.005em}
+.borne-sub{margin-top:8px;font-weight:600;color:var(--muted);min-height:1.45em;text-wrap:balance}
+.borne-sub.warn{color:var(--warn)}
+
+.status{justify-self:start;display:inline-flex;align-items:center;gap:8px;font:600 13px/1 var(--f-body);letter-spacing:.07em;text-transform:uppercase;padding:9px 12px;border-radius:999px;background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--line)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
+.status.rec .dot{background:var(--cap);animation:pulse 1.4s ease-in-out infinite}
+.status.loc .dot{background:var(--here)}
+.status.pause .dot{background:var(--warn)}
+@keyframes pulse{50%{opacity:.2}}
+@media (prefers-reduced-motion:reduce){.status.rec .dot{animation:none}}
+
+/* Mesures */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5px;background:var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:inset 0 0 0 1.5px var(--line);margin:0;padding:1.5px}
+.stat{background:var(--surface);padding:10px 12px;min-width:0}
+.stat dt{font:600 12px/1.2 var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.stat dd{margin:4px 0 0;font:700 24px/1.1 var(--f-display);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:7px;overflow-wrap:anywhere}
+.q{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
+.q.ok{background:var(--ok)} .q.warn{background:var(--warn)} .q.bad{background:var(--bad)}
+@media (min-width:500px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+.alerts{display:grid;gap:8px}
+.alerts:empty{display:none}
+.alert{margin:0;border-radius:12px;padding:10px 13px;font-weight:500;font-size:15px;line-height:1.4}
+.alert.warn{background:var(--warn-bg);color:var(--warn)}
+.alert.bad{background:var(--bad-bg);color:var(--bad)}
+.alert.info{background:var(--info-bg);color:var(--ink)}
+.note{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
+
+/* Croquis */
+.sketch{background:var(--surface);border-radius:var(--radius);box-shadow:inset 0 0 0 1.5px var(--line);padding:6px;display:grid;gap:4px}
+.sketch svg{display:block;width:100%;height:auto;max-width:100%}
+.sk-line{fill:none;stroke:var(--ink);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.sk-start{fill:var(--surface);stroke:var(--ink);stroke-width:2.2}
+.sk-end{fill:var(--ink)}
+.sk-obs{fill:var(--warn);stroke:var(--surface);stroke-width:1.5}
+.sk-obs.g3{fill:var(--bad)} .sk-obs.g1{fill:var(--ok)}
+.sk-borne{fill:var(--cap);stroke:var(--surface);stroke-width:1.5}
+.sk-here{fill:var(--here);stroke:var(--surface);stroke-width:2}
+.sk-halo{fill:var(--here);opacity:.2}
+.sk-scale{stroke:var(--muted);stroke-width:2}
+.sk-txt{font:600 11px var(--f-body);fill:var(--muted)}
+.sk-empty{margin:0;padding:22px 12px;text-align:center;color:var(--muted);font-size:15px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;padding:0 8px 6px;color:var(--muted);font-size:13px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.lg{width:9px;height:9px;border-radius:50%;display:inline-block}
+.lg.s{background:var(--surface);box-shadow:inset 0 0 0 2px var(--ink)} .lg.e{background:var(--ink)} .lg.o{background:var(--warn)} .lg.b{background:var(--cap);border-radius:2px} .lg.h{background:var(--here)}
+
+/* Onglets */
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:var(--sunk);padding:4px;border-radius:13px;box-shadow:inset 0 0 0 1.5px var(--line)}
+.tab{border:0;background:transparent;color:var(--muted);font:600 14px/1.1 var(--f-body);padding:11px 2px;border-radius:9px;min-width:0}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.14),inset 0 0 0 1px var(--line)}
+
+/* Listes */
+.h3{margin:6px 0 0;font:700 15px/1.2 var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.rlist{display:grid;gap:10px;list-style:none;margin:0;padding:0}
+.rcard{width:100%;text-align:left;border:0;background:var(--surface);border-radius:var(--radius);padding:12px 14px;box-shadow:inset 0 0 0 1.5px var(--line);display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;color:var(--ink)}
+.rcard .t{font-weight:700;font-size:17px;overflow-wrap:anywhere}
+.rcard .m{color:var(--muted);font-size:14px}
+.rcard svg{width:18px;height:18px;color:var(--muted)}
+.mini{width:50px;border-radius:15px 15px 4px 4px;overflow:hidden;box-shadow:inset 0 0 0 1.5px var(--line);text-align:center;background:var(--surface)}
+.mini i{display:block;height:11px;background:var(--cap)}
+.mini b{display:block;font:700 18px/1 var(--f-display);padding:6px 2px 1px;font-variant-numeric:tabular-nums}
+.mini small{display:block;font:600 10px/1 var(--f-body);letter-spacing:.08em;color:var(--muted);padding-bottom:6px;text-transform:uppercase}
+
+.card{background:var(--surface);border-radius:var(--radius);box-shadow:inset 0 0 0 1.5px var(--line);padding:16px;display:grid;gap:12px}
+.card h3{margin:0;font:700 20px/1.15 var(--f-display);letter-spacing:.02em}
+.card p{margin:0}
+.steps{margin:0;padding:0;list-style:none;display:grid;gap:12px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;align-items:start;counter-increment:s}
+.steps li::before{content:counter(s);width:30px;height:30px;border-radius:50%;background:var(--sunk);box-shadow:inset 0 0 0 1.5px var(--line);display:grid;place-items:center;font:700 16px var(--f-display)}
+.steps b{display:block}
+.steps span{color:var(--muted);font-size:15px}
+
+.olist{list-style:none;margin:0;padding:0;background:var(--surface);border-radius:var(--radius);box-shadow:inset 0 0 0 1.5px var(--line);overflow:hidden}
+.olist li+li{border-top:1px solid var(--line)}
+.orow{display:grid;grid-template-columns:5.4em minmax(0,1fr);gap:12px;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);padding:12px 14px;align-items:start}
+.opk{font:700 22px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.opk small{display:block;font:600 13px var(--f-body);color:var(--muted);margin-top:2px}
+.otop{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.otype{font-weight:700}
+.ometa{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.ometa:empty{display:none}
+.onote{display:block;font-size:15px;margin-top:4px;overflow-wrap:anywhere}
+.pill{display:inline-block;font:600 12px/1 var(--f-body);padding:5px 8px;border-radius:999px;letter-spacing:.03em;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.bad{background:var(--bad-bg);color:var(--bad)}
+.summary{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Tableau */
+.twrap{overflow-x:auto;background:var(--surface);border-radius:var(--radius);box-shadow:inset 0 0 0 1.5px var(--line);max-height:62vh}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:15px}
+th,td{padding:9px 12px;text-align:right;white-space:nowrap;border-top:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--sunk);font:600 12px/1.2 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-top:0}
+td:first-child,th:first-child{text-align:left}
+td:first-child{font:700 17px var(--f-display)}
+tr.edge td{color:var(--muted)}
+
+/* Choix */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:0;background:var(--sunk);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line);border-radius:999px;padding:10px 14px;font:600 15px/1.1 var(--f-body);min-height:44px}
+.chip[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink);box-shadow:none}
+.xlist{display:grid;gap:10px}
+.xbtn{width:100%;border:0;text-align:left;background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--line);border-radius:var(--radius);padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;color:var(--ink)}
+.xbtn b{font-size:17px}
+.xbtn span{grid-column:1;color:var(--muted);font-size:14px}
+.xbtn svg{grid-row:1/3;grid-column:2;width:22px;height:22px;color:var(--muted)}
+
+/* Feuilles */
+.backdrop{position:fixed;inset:0;z-index:20;background:var(--shade);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding-top:10px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px;align-content:start}
+.sheet::before{content:"";justify-self:center;width:40px;height:5px;border-radius:3px;background:var(--line)}
+.sh-head{display:flex;align-items:center;gap:12px}
+.sh-head h2{flex:1;margin:0;font:700 24px/1.1 var(--f-display);text-wrap:balance}
+.sh-lead{margin:0;color:var(--muted)}
+.sh-lead strong{color:var(--ink);font:700 20px var(--f-display)}
+.field{display:grid;gap:7px;min-width:0}
+.lbl{font:600 13px/1.2 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.hint{color:var(--muted);font-size:14px}
+input[type=text],input[type=number],textarea{font:500 17px/1.3 var(--f-body);color:var(--ink);background:var(--sunk);border:1.5px solid var(--line);border-radius:10px;padding:12px;width:100%;min-width:0}
+textarea{resize:vertical}
+.pkin{display:flex;align-items:center;gap:8px;font:700 26px/1 var(--f-display)}
+.pkin input{font:700 28px/1 var(--f-display);text-align:center;padding:10px 6px;font-variant-numeric:tabular-nums}
+.pkin input:first-of-type{width:4.2em}
+.pkin input:last-of-type{width:5em}
+.ecart{margin:0;font:700 20px var(--f-display);min-height:1.2em}
+.ecart.ok{color:var(--ok)} .ecart.warn{color:var(--warn)} .ecart.bad{color:var(--bad)}
+.check{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;background:var(--sunk);border-radius:12px;padding:12px;box-shadow:inset 0 0 0 1.5px var(--line);font-weight:600}
+.check input{width:24px;height:24px;margin:0;accent-color:var(--cap)}
+.check small{font-weight:400;color:var(--muted);font-size:14px}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:30;background:var(--btn);color:var(--btn-ink);padding:12px 16px;border-radius:12px;font-weight:600;max-width:calc(100% - 32px);width:max-content;transition:opacity .2s,transform .2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.warn{background:var(--warn);color:var(--surface)}
+.toast.bad{background:var(--bad);color:var(--surface)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="sheet" class="backdrop" hidden><div class="sheet" id="sheet-body" role="dialog" aria-modal="true"></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<input type="file" id="imp" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+
+/*GEO-START*/
+const RE = 6371008.8, DEG = Math.PI / 180;
+const LAT = 0, LON = 1, PK = 2, ACC = 3, TS = 4;
+
+function hav(a1, o1, a2, o2) {
+  const dA = (a2 - a1) * DEG, dO = (o2 - o1) * DEG;
+  const s = Math.sin(dA / 2) ** 2 + Math.cos(a1 * DEG) * Math.cos(a2 * DEG) * Math.sin(dO / 2) ** 2;
+  return 2 * RE * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/* Projette une position sur le tracé enregistré : PK, écart à l'axe et côté (par rapport au sens des PK croissants). */
+function project(pts, lat, lon) {
+  if (!pts || pts.length < 2) return null;
+  const cl = Math.cos(lat * DEG);
+  let best = null;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    const ax = (a[LON] - lon) * DEG * cl * RE, ay = (a[LAT] - lat) * DEG * RE;
+    const bx = (b[LON] - lon) * DEG * cl * RE, by = (b[LAT] - lat) * DEG * RE;
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    let t = L2 > 0 ? -(ax * dx + ay * dy) / L2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const px = ax + t * dx, py = ay + t * dy, d2 = px * px + py * py;
+    if (!best || d2 < best.d2) best = { d2, i, t, cross: dy * ax - dx * ay };
+  }
+  const a = pts[best.i], b = pts[best.i + 1];
+  const last = pts.length - 2;
+  return {
+    pk: a[PK] + best.t * (b[PK] - a[PK]),
+    off: Math.sqrt(best.d2),
+    side: best.cross > 0 ? 'G' : 'D',
+    i: best.i,
+    edge: (best.i === 0 && best.t === 0) ? 'start' : (best.i === last && best.t === 1) ? 'end' : null
+  };
+}
+
+/* Points du tracé tous les `step` mètres de PK, interpolés sur les segments. */
+function pkTable(pts, step) {
+  const out = [];
+  if (!pts || pts.length < 2 || !(step > 0)) return out;
+  out.push({ pk: pts[0][PK], lat: pts[0][LAT], lon: pts[0][LON], edge: 'Début' });
+  let target = Math.floor(pts[0][PK] / step + 1e-9) * step + step;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    if (b[PK] <= a[PK]) continue;
+    while (target <= b[PK] + 1e-6) {
+      if (target >= a[PK] - 1e-6) {
+        const t = (target - a[PK]) / (b[PK] - a[PK]);
+        out.push({ pk: target, lat: a[LAT] + t * (b[LAT] - a[LAT]), lon: a[LON] + t * (b[LON] - a[LON]) });
+      }
+      target += step;
+    }
+  }
+  const L = pts[pts.length - 1];
+  if (Math.abs(out[out.length - 1].pk - L[PK]) > 0.5) out.push({ pk: L[PK], lat: L[LAT], lon: L[LON], edge: 'Fin' });
+  else out[out.length - 1].edge = out.length > 1 ? 'Fin' : out[out.length - 1].edge;
+  return out;
+}
+
+/* WGS 84 -> UTM (formules de Snyder). `zone` permet de garder une seule zone pour tout un tableau. */
+function toUTM(lat, lon, zone) {
+  const a = 6378137, f = 1 / 298.257223563, k0 = 0.9996, e2 = f * (2 - f), ep2 = e2 / (1 - e2);
+  const z = zone || Math.min(60, Math.floor((lon + 180) / 6) + 1);
+  const lon0 = ((z - 1) * 6 - 180 + 3) * DEG, phi = lat * DEG, lam = lon * DEG;
+  const sp = Math.sin(phi), cp = Math.cos(phi), tp = Math.tan(phi);
+  const N = a / Math.sqrt(1 - e2 * sp * sp), T = tp * tp, C = ep2 * cp * cp, A = cp * (lam - lon0);
+  const e4 = e2 * e2, e6 = e4 * e2;
+  const M = a * ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi
+    - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi)
+    + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi)
+    - (35 * e6 / 3072) * Math.sin(6 * phi));
+  const x = k0 * N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5 / 120) + 500000;
+  let y = k0 * (M + N * tp * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6 / 720));
+  if (lat < 0) y += 1e7;
+  return { x, y, zone: z, hemi: lat < 0 ? 'S' : 'N' };
+}
+
+function fmtPK(m) {
+  if (m == null || !isFinite(m)) return '—';
+  const neg = m < 0, v = Math.round(Math.abs(m));
+  const km = Math.floor(v / 1000), r = v - km * 1000;
+  return (neg ? '−' : '') + km + '+' + String(r).padStart(3, '0');
+}
+/*GEO-END*/
+
+/* ---------- Données ---------- */
+const KEY = 'pkterrain.v1';
+const DEF = { maxAcc: 20, minStep: 5, sim: false };
+const TYPES = ['Nid-de-poule', 'Ravinement', 'Bourbier', 'Tôle ondulée', 'Défaut de profil', 'Compactage', 'Assainissement / fossé', 'Ouvrage (buse, dalot)', 'Autre'];
+const COTES = { G: 'Gauche', A: 'Axe', D: 'Droite', GD: 'Les deux côtés' };
+const GRAV = { 1: 'Mineure', 2: 'Moyenne', 3: 'Grave' };
+const GCLS = { 1: 'ok', 2: 'warn', 3: 'bad' };
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.routes)) { s.settings = Object.assign({}, DEF, s.settings || {}); return s; }
+  } catch (e) { }
+  return { v: 1, routes: [], settings: Object.assign({}, DEF), active: null };
+}
+let db = load();
+let saveTimer = null;
+function persist() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); }
+  catch (e) { toast('Mémoire pleine : exporte une sauvegarde puis supprime un ancien itinéraire.', 'bad'); }
+}
+function save(now) {
+  if (now) { clearTimeout(saveTimer); saveTimer = null; persist(); return; }
+  if (!saveTimer) saveTimer = setTimeout(() => { saveTimer = null; persist(); }, 3000);
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const getRoute = id => db.routes.find(r => r.id === id);
+const lastPk = r => r.pts.length ? r.pts[r.pts.length - 1][PK] : r.pkStart;
+const touch = r => { r.updated = Date.now(); };
+function pathLen(r) { let s = 0; for (let i = 1; i < r.pts.length; i++) { const a = r.pts[i - 1], b = r.pts[i]; s += hav(a[LAT], a[LON], b[LAT], b[LON]); } return s; }
+const obsPk = o => o.kind === 'borne' ? o.pkB : o.pk;
+
+/* ---------- Formats ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nf6 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+function fmtDist(m) { if (m == null || !isFinite(m)) return '—'; return m < 1000 ? nf0.format(m) + ' m' : nf2.format(m / 1000) + ' km'; }
+function fmtDur(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return h ? h + ' h ' + String(m).padStart(2, '0') : m + ' min ' + String(x).padStart(2, '0');
+}
+function fmtDate(t) { return new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }); }
+function fmtSigned(m) { const v = Math.round(m); return (v > 0 ? '+' : v < 0 ? '−' : '±') + nf0.format(Math.abs(v)) + ' m'; }
+const ecCls = e => Math.abs(e) <= 10 ? 'ok' : Math.abs(e) <= 30 ? 'warn' : 'bad';
+
+const ICON = {
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
+  next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  rec: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="currentColor"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>'
+};
+
+/* ---------- État de session ---------- */
+const ui = { view: 'home', routeId: null, tab: 'terrain', step: 100, coord: 'utm', form: null };
+const live = { mode: null, routeId: null, paused: false, watchId: null, fix: null, prev: null, pk: null, proj: null, startedAt: 0, startPk: 0, err: null, gap: null, wake: null, simTimer: null, simS: 0, lastSketch: 0 };
+
+/* ---------- GPS ---------- */
+function startGeo() {
+  if (db.settings.sim) { startSim(); return; }
+  if (!('geolocation' in navigator)) { live.err = 'Ce navigateur ne donne pas accès au GPS.'; return; }
+  if (!window.isSecureContext) { live.err = 'Le GPS ne fonctionne que si l’appli est ouverte depuis son adresse https://. Pour essayer ici, active le mode test dans les réglages.'; return; }
+  live.watchId = navigator.geolocation.watchPosition(onFix, onGeoErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+}
+function onGeoErr(e) {
+  if (e.code === 1) live.err = 'Accès à la position refusé. Sur iPhone : Réglages › Confidentialité et sécurité › Service de localisation › Safari, puis « Lorsque l’app est active » et « Position exacte ».';
+  else if (e.code === 2) live.err = 'Position indisponible. Vérifie que le Service de localisation est activé.';
+  updateLive();
+}
+function onFix(pos) {
+  const c = pos.coords;
+  const f = { lat: c.latitude, lon: c.longitude, acc: c.accuracy || 99, t: pos.timestamp || Date.now(), spd: (c.speed != null && c.speed >= 0) ? c.speed : null };
+  if (f.spd == null && live.fix) {
+    const dt = (f.t - live.fix.t) / 1000;
+    if (dt > 0.5 && dt < 10) f.spd = hav(live.fix.lat, live.fix.lon, f.lat, f.lon) / dt;
+  }
+  live.err = null; live.fix = f;
+  const r = getRoute(live.routeId); if (!r) return;
+  if (live.mode === 'rec' && !live.paused) recordFix(r, f);
+  if (live.mode === 'loc') { live.proj = project(r.pts, f.lat, f.lon); live.pk = live.proj ? live.proj.pk : null; }
+  updateLive();
+}
+function recordFix(r, f) {
+  const S = db.settings, pts = r.pts;
+  if (f.acc > S.maxAcc) return;
+  if (!pts.length) { pts.push([f.lat, f.lon, r.pkStart, Math.round(f.acc), f.t]); touch(r); save(); return; }
+  const L = pts[pts.length - 1];
+  const d = hav(L[LAT], L[LON], f.lat, f.lon);
+  const dt = Math.max(0.001, (f.t - L[TS]) / 1000);
+  if (dt < 60 && d / dt > 45) return;                       // saut GPS aberrant (> 160 km/h)
+  const thr = Math.max(S.minStep, Math.min(f.acc, 15) * 0.7); // évite d'additionner le bruit à l'arrêt
+  if (d < thr) return;
+  if (dt > 30 && d > 100) live.gap = { d, dt, at: Date.now() };
+  pts.push([f.lat, f.lon, Math.round((L[PK] + d) * 10) / 10, Math.round(f.acc), f.t]);
+  touch(r); save();
+}
+function recPk(r) {
+  const n = r.pts.length; if (!n) return r.pkStart;
+  const L = r.pts[n - 1], f = live.fix;
+  if (!f || live.paused || f.acc > db.settings.maxAcc) return L[PK];
+  const d = hav(L[LAT], L[LON], f.lat, f.lon);
+  return d < 60 ? L[PK] + d : L[PK];
+}
+
+/* Mode test : un véhicule fictif roule à ~30 km/h sur une piste sinueuse. */
+function simPos(s) {
+  const lat0 = 9.4925, lon0 = -7.5640;
+  const north = s * 0.96, east = 140 * Math.sin(s / 520) + 35 * Math.sin(s / 130);
+  return [lat0 + north / 111320, lon0 + east / (111320 * Math.cos(lat0 * DEG))];
+}
+function startSim() {
+  if (live.mode === 'loc') live.simS = 0;
+  const tick = () => {
+    live.simS += 7 + Math.random() * 3;
+    const p = simPos(live.simS), n = () => (Math.random() - 0.5) * 5 / 111320;
+    onFix({ coords: { latitude: p[0] + n(), longitude: p[1] + n(), accuracy: 3.5 + Math.random() * 5, speed: 8.3 }, timestamp: Date.now() });
+  };
+  live.simTimer = setInterval(tick, 1000);
+  setTimeout(tick, 300);
+}
+
+async function keepAwake() {
+  try { if ('wakeLock' in navigator && document.visibilityState === 'visible') live.wake = await navigator.wakeLock.request('screen'); } catch (e) { }
+}
+
+function startLive(r, mode) {
+  stopLive(false);
+  Object.assign(live, { mode, routeId: r.id, paused: false, fix: null, pk: mode === 'rec' ? lastPk(r) : null, proj: null, err: null, gap: null, startedAt: Date.now(), startPk: lastPk(r), lastSketch: 0 });
+  if (mode === 'rec') { db.active = { routeId: r.id }; save(true); }
+  ui.view = 'route'; ui.routeId = r.id; ui.tab = 'terrain';
+  startGeo(); keepAwake();
+  render(); scrollTo(0, 0);
+}
+function stopLive(doRender = true) {
+  if (live.watchId != null) { navigator.geolocation.clearWatch(live.watchId); live.watchId = null; }
+  if (live.simTimer) { clearInterval(live.simTimer); live.simTimer = null; }
+  if (live.wake) { live.wake.release().catch(() => { }); live.wake = null; }
+  const wasRec = live.mode === 'rec';
+  live.mode = null; live.routeId = null; live.paused = false; live.fix = null;
+  if (wasRec) { db.active = null; save(true); }
+  if (doRender) render();
+}
+
+/* ---------- Croquis du tracé ---------- */
+function sketchSVG(r) {
+  const pts = r.pts, W = 340, H = 168, P = 16, B = 18;
+  if (pts.length < 2) return '<p class="sk-empty">Le croquis du tracé apparaîtra après les premiers mètres.</p>';
+  const lat0 = pts[0][LAT], lon0 = pts[0][LON], cl = Math.cos(lat0 * DEG);
+  const X = (la, lo) => [(lo - lon0) * DEG * cl * RE, (la - lat0) * DEG * RE];
+  const step = Math.max(1, Math.ceil(pts.length / 600));
+  const xy = [];
+  for (let i = 0; i < pts.length; i += step) xy.push(X(pts[i][LAT], pts[i][LON]));
+  const Lp = pts[pts.length - 1]; xy.push(X(Lp[LAT], Lp[LON]));
+  const obs = r.obs.filter(o => isFinite(o.lat)).map(o => ({ o, p: X(o.lat, o.lon) }));
+  const here = (live.mode && live.routeId === r.id && live.fix) ? X(live.fix.lat, live.fix.lon) : null;
+  let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
+  const ext = p => { mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]); mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]); };
+  xy.forEach(ext); obs.forEach(o => ext(o.p)); if (here) ext(here);
+  const aw = W - 2 * P, ah = H - 2 * P - B;
+  const sc = Math.min(aw / Math.max(mxx - mnx, 30), ah / Math.max(mxy - mny, 30));
+  const offX = (aw - (mxx - mnx) * sc) / 2, offY = (ah - (mxy - mny) * sc) / 2;
+  const sx = p => (P + offX + (p[0] - mnx) * sc).toFixed(1);
+  const sy = p => (P + ah - offY - (p[1] - mny) * sc).toFixed(1);
+  const line = xy.map(p => sx(p) + ',' + sy(p)).join(' ');
+  const nice = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
+  const want = 90 / sc; let len = nice[0]; for (const n of nice) if (n <= want) len = n;
+  const bw = len * sc, by = H - 9;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Croquis du tracé, ${esc(fmtDist(pathLen(r)))}">`;
+  s += `<polyline class="sk-line" points="${line}"/>`;
+  for (const { o, p } of obs) {
+    if (o.kind === 'borne') s += `<rect class="sk-borne" x="${(+sx(p) - 4.5).toFixed(1)}" y="${(+sy(p) - 4.5).toFixed(1)}" width="9" height="9" rx="1.5"/>`;
+    else s += `<circle class="sk-obs g${o.grav}" cx="${sx(p)}" cy="${sy(p)}" r="5"/>`;
+  }
+  s += `<circle class="sk-start" cx="${sx(xy[0])}" cy="${sy(xy[0])}" r="5.5"/>`;
+  s += `<circle class="sk-end" cx="${sx(xy[xy.length - 1])}" cy="${sy(xy[xy.length - 1])}" r="5.5"/>`;
+  if (here) s += `<circle class="sk-halo" cx="${sx(here)}" cy="${sy(here)}" r="13"/><circle class="sk-here" cx="${sx(here)}" cy="${sy(here)}" r="6"/>`;
+  s += `<line class="sk-scale" x1="${P}" y1="${by}" x2="${(P + bw).toFixed(1)}" y2="${by}"/><line class="sk-scale" x1="${P}" y1="${by - 4}" x2="${P}" y2="${by + 3}"/><line class="sk-scale" x1="${(P + bw).toFixed(1)}" y1="${by - 4}" x2="${(P + bw).toFixed(1)}" y2="${by + 3}"/>`;
+  s += `<text class="sk-txt" x="${(P + bw + 8).toFixed(1)}" y="${by + 4}">${esc(fmtDist(len))}</text>`;
+  s += `<text class="sk-txt" x="${W - P}" y="${P}" text-anchor="end">N ↑</text></svg>`;
+  return s;
+}
+const LEGEND = '<div class="legend"><span><i class="lg s"></i>Début</span><span><i class="lg e"></i>Fin</span><span><i class="lg o"></i>Constat</span><span><i class="lg b"></i>Borne</span><span><i class="lg h"></i>Ta position</span></div>';
+
+/* ---------- Vues ---------- */
+function render() {
+  const app = $('#app');
+  app.innerHTML = ui.view === 'route' && getRoute(ui.routeId) ? routeHTML(getRoute(ui.routeId)) : (ui.view = 'home', homeHTML());
+  if (ui.view === 'route' && ui.tab === 'terrain') { live.lastSketch = 0; updateLive(); }
+}
+
+function homeHTML() {
+  const routes = [...db.routes].sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  const S = db.settings;
+  let h = `<header class="top"><span class="mark" aria-hidden="true"></span><div class="grow"><h1>PK Terrain</h1><p class="sub">Chaînage GPS et constats par PK</p></div><button class="icon-btn" data-act="settings" aria-label="Réglages">${ICON.gear}</button></header>`;
+  if (!window.isSecureContext && !S.sim) h += `<p class="alert warn">Appli ouverte hors https : le GPS sera bloqué. Mets-la en ligne (voir la marche à suivre) ou active le mode test dans les réglages pour l’essayer.</p>`;
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  if (isIOS && !navigator.standalone && window.isSecureContext) h += `<p class="alert info">Pour l’utiliser sans réseau : touche Partager, puis « Sur l’écran d’accueil ».</p>`;
+  if (live.mode && getRoute(live.routeId)) {
+    const r = getRoute(live.routeId);
+    h += `<section class="card"><h3>${live.mode === 'rec' ? 'Enregistrement en cours' : 'Repérage en cours'}</h3><p>${esc(r.name)} · PK ${fmtPK(live.pk ?? lastPk(r))}</p><button class="btn red" data-act="open" data-arg="${r.id}">Revenir au terrain</button></section>`;
+  } else if (db.active && getRoute(db.active.routeId)) {
+    const r = getRoute(db.active.routeId);
+    h += `<section class="card"><h3>Enregistrement interrompu</h3><p>« ${esc(r.name)} » s’est arrêté au PK ${fmtPK(lastPk(r))}. Reprends depuis ce point, ou clos l’itinéraire.</p><div class="grid2"><button class="btn red" data-act="resume" data-arg="${r.id}">Reprendre</button><button class="btn ghost" data-act="dismissActive">Clore</button></div></section>`;
+  }
+  h += `<button class="btn" data-act="newRoute">${ICON.plus}Nouvel itinéraire</button>`;
+  if (!routes.length) {
+    h += `<section class="card"><h3>Comment ça marche</h3><ol class="steps">
+      <li><div><b>Place-toi au PK de départ</b><span>Crée l’itinéraire, indique le PK du point où tu te trouves (0+000 par défaut) et démarre.</span></div></li>
+      <li><div><b>Avance sur l’itinéraire</b><span>Le GPS additionne la distance parcourue : la borne à l’écran affiche ton PK en direct.</span></div></li>
+      <li><div><b>Arrête-toi et note</b><span>« Constat » enregistre un défaut au PK où tu es, avec ses coordonnées. « Contrôle borne » compare le PK GPS au PK inscrit.</span></div></li>
+      <li><div><b>Reviens plus tard</b><span>« Se repérer » te donne ton PK sur le tracé déjà enregistré, d’où que tu arrives.</span></div></li>
+    </ol></section>`;
+  } else {
+    h += `<h3 class="h3">Itinéraires</h3><ul class="rlist">${routes.map(r => {
+      const n = r.obs.filter(o => o.kind === 'obs').length, b = r.obs.length - n, L = pathLen(r);
+      return `<li><button class="rcard" data-act="open" data-arg="${r.id}"><span class="mini" aria-hidden="true"><i></i><b>${L >= 1000 ? nf1.format(L / 1000) : nf0.format(L)}</b><small>${L >= 1000 ? 'km' : 'm'}</small></span><span><span class="t">${esc(r.name)}</span><br><span class="m">PK ${fmtPK(r.pkStart)} → ${fmtPK(lastPk(r))}</span><br><span class="m">${n} constat${n > 1 ? 's' : ''} · ${b} borne${b > 1 ? 's' : ''} · ${fmtDate(r.updated || r.created)}</span></span>${ICON.next}</button></li>`;
+    }).join('')}</ul>`;
+  }
+  return h;
+}
+
+function routeHTML(r) {
+  const tabs = [['terrain', 'Terrain'], ['obs', 'Constats'], ['table', 'Tableau PK'], ['files', 'Fichiers']];
+  let h = `<header class="top"><button class="icon-btn" data-act="home" aria-label="Retour aux itinéraires">${ICON.back}</button><div class="grow"><h2>${esc(r.name)}</h2><p class="sub" id="route-sub">${routeSub(r)}</p></div></header>`;
+  h += `<nav class="tabs" role="tablist">${tabs.map(([k, l]) => `<button class="tab" role="tab" aria-selected="${ui.tab === k}" data-act="tab" data-arg="${k}">${l}</button>`).join('')}</nav>`;
+  if (ui.tab === 'terrain') h += terrainHTML(r);
+  else if (ui.tab === 'obs') h += obsHTML(r);
+  else if (ui.tab === 'table') h += tableHTML(r);
+  else h += filesHTML(r);
+  return h;
+}
+
+const routeSub = r => 'PK ' + fmtPK(r.pkStart) + ' → ' + fmtPK(lastPk(r)) + ' · ' + fmtDist(pathLen(r));
+
+function terrainHTML(r) {
+  const isLive = live.mode && live.routeId === r.id;
+  const n = r.pts.length;
+  let h = '';
+  if (isLive) h += `<div class="status ${live.mode}" id="status"><span class="dot"></span><span id="status-t"></span></div>`;
+  h += `<section class="borne" aria-live="polite"><div class="borne-cap">${esc(r.name)}</div><div class="borne-body"><div class="borne-k">PK</div><div class="borne-pk" id="pkv">${fmtPK(isLive ? (live.pk ?? lastPk(r)) : lastPk(r))}</div><div class="borne-sub" id="pksub">${isLive ? '' : (n ? 'Fin du tracé enregistré' : 'Aucun point enregistré')}</div></div></section>`;
+  if (isLive) {
+    const L = live.mode === 'rec' ? ['Précision', 'Vitesse', 'Parcouru', 'Durée'] : ['Précision', 'Vitesse', 'Écart à l’axe', 'Fin du tracé'];
+    h += `<dl class="stats">${L.map((l, i) => `<div class="stat"><dt>${l}</dt><dd id="st-${i}">—</dd></div>`).join('')}</dl>`;
+    h += `<div class="alerts" id="alerts"></div>`;
+    h += `<div class="grid2">
+      <button class="btn" data-act="obs">Constat</button>
+      <button class="btn ghost" data-act="borne">Contrôle borne</button>
+      ${live.mode === 'rec'
+        ? `<button class="btn ghost" data-act="pause" id="b-pause">${live.paused ? 'Reprendre' : 'Pause'}</button><button class="btn danger" data-act="finish">Terminer</button>`
+        : `<button class="btn danger span2" data-act="stop">Arrêter le repérage</button>`}
+    </div>`;
+    if (live.mode === 'loc') h += `<div id="near"></div>`;
+    h += `<div class="sketch"><div id="sketch">${sketchSVG(r)}</div>${LEGEND}</div>`;
+    h += live.mode === 'rec'
+      ? `<p class="note">Mets en pause quand tu descends du véhicule pour marcher : les allers-retours autour d’un point s’ajouteraient au PK. Garde l’écran allumé, l’iPhone coupe le GPS des applis web quand il se verrouille.</p>`
+      : `<p class="note">Le PK est calculé en ramenant ta position sur le tracé enregistré. Garde l’écran allumé pendant le repérage.</p>`;
+  } else {
+    const nObs = r.obs.filter(o => o.kind === 'obs').length;
+    h += `<dl class="stats">
+      <div class="stat"><dt>Longueur</dt><dd>${fmtDist(pathLen(r))}</dd></div>
+      <div class="stat"><dt>Points GPS</dt><dd>${nf0.format(n)}</dd></div>
+      <div class="stat"><dt>Constats</dt><dd>${nObs}</dd></div>
+      <div class="stat"><dt>Bornes</dt><dd>${r.obs.length - nObs}</dd></div></dl>`;
+    if (live.mode) h += `<p class="alert info">Une autre session est en cours. La démarrer ici arrêtera la précédente.</p>`;
+    h += n >= 2
+      ? `<div class="grid2"><button class="btn span2" data-act="loc">${ICON.pin}Se repérer sur l’itinéraire</button><button class="btn ghost span2" data-act="rec">Continuer l’enregistrement depuis PK ${fmtPK(lastPk(r))}</button></div>`
+      : `<button class="btn red" data-act="rec">${ICON.rec}Démarrer au PK ${fmtPK(lastPk(r))}</button>`;
+    h += `<div class="sketch"><div id="sketch">${sketchSVG(r)}</div>${n >= 2 ? LEGEND : ''}</div>`;
+  }
+  return h;
+}
+
+function updateLive() {
+  if (!live.mode || ui.view !== 'route' || ui.tab !== 'terrain' || live.routeId !== ui.routeId) return;
+  const r = getRoute(live.routeId); if (!r || !$('#pkv')) return;
+  const f = live.fix, S = db.settings;
+  if (live.mode === 'rec') live.pk = recPk(r);
+  $('#pkv').textContent = fmtPK(live.pk);
+  let sub = '', cls = '';
+  if (live.mode === 'rec') {
+    if (!r.pts.length) sub = 'En attente d’un point GPS précis pour fixer le PK ' + fmtPK(r.pkStart);
+    else { const nx = Math.floor(live.pk / 100 + 1e-9) * 100 + 100; sub = 'Prochain hectomètre PK ' + fmtPK(nx) + ' dans ' + nf0.format(nx - live.pk) + ' m'; }
+  } else {
+    const p = live.proj;
+    if (!f) sub = 'Recherche du signal GPS…';
+    else if (!p) sub = 'Tracé trop court pour se repérer';
+    else if (p.edge === 'start' && p.off > 15) { sub = 'Avant le début du tracé, à ' + fmtDist(p.off); cls = 'warn'; }
+    else if (p.edge === 'end' && p.off > 15) { sub = 'Au-delà de la fin du tracé, à ' + fmtDist(p.off); cls = 'warn'; }
+    else if (p.off > 60) { sub = 'Hors itinéraire : à ' + fmtDist(p.off) + ' du tracé'; cls = 'warn'; }
+    else if (p.off < 2.5) sub = 'Sur l’axe du tracé';
+    else sub = 'À ' + nf0.format(p.off) + ' m de l’axe, côté ' + (p.side === 'G' ? 'gauche' : 'droit');
+  }
+  const se = $('#pksub'); se.textContent = sub; se.className = 'borne-sub ' + cls;
+  $('#status').className = 'status ' + (live.paused ? 'pause' : live.mode);
+  $('#status-t').textContent = live.mode === 'loc' ? 'Repérage' : live.paused ? 'En pause' : 'Enregistrement';
+  const q = !f ? '' : f.acc <= 10 ? 'ok' : f.acc <= S.maxAcc ? 'warn' : 'bad';
+  $('#st-0').innerHTML = f ? `<i class="q ${q}"></i>±${nf0.format(f.acc)} m` : '—';
+  $('#st-1').textContent = f && f.spd != null ? nf0.format(f.spd * 3.6) + ' km/h' : '—';
+  if (live.mode === 'rec') {
+    $('#st-2').textContent = fmtDist(Math.max(0, lastPk(r) - live.startPk));
+    $('#st-3').textContent = fmtDur(Date.now() - live.startedAt);
+  } else {
+    $('#st-2').textContent = live.proj ? nf0.format(live.proj.off) + ' m' : '—';
+    $('#st-3').textContent = fmtPK(lastPk(r));
+  }
+  const al = [];
+  if (live.err) al.push(['bad', live.err]);
+  else if (!f) al.push(['info', 'Recherche du signal GPS… Reste à découvert, à l’écart des arbres et des bâtiments.']);
+  else if (live.mode === 'rec' && f.acc > S.maxAcc) al.push(['warn', 'Signal imprécis (±' + nf0.format(f.acc) + ' m). Les points sont ignorés tant que la précision dépasse ±' + S.maxAcc + ' m.']);
+  else if (live.mode === 'loc' && f.acc > 30) al.push(['warn', 'Signal imprécis (±' + nf0.format(f.acc) + ' m) : le PK affiché peut être décalé.']);
+  if (live.gap && Date.now() - live.gap.at < 120000) al.push(['warn', 'Coupure GPS de ' + fmtDur(live.gap.dt * 1000) + ' : ' + fmtDist(live.gap.d) + ' comptés en ligne droite. Contrôle au prochain repère.']);
+  if (live.paused) al.push(['info', 'En pause : le PK ne bouge plus. Reprends quand tu remontes dans le véhicule.']);
+  if (S.sim) al.push(['info', 'Mode test : la position est simulée.']);
+  $('#alerts').innerHTML = al.map(([c, t]) => `<p class="alert ${c}">${esc(t)}</p>`).join('');
+  const bp = $('#b-pause'); if (bp) bp.textContent = live.paused ? 'Reprendre' : 'Pause';
+  const nr = $('#near'); if (nr) { const nh = live.pk != null ? nearHTML(r, live.pk) : ''; if (nr._h !== nh) { nr.innerHTML = nh; nr._h = nh; } }
+  if (Date.now() - live.lastSketch > 2500) { $('#sketch').innerHTML = sketchSVG(r); $('#route-sub').textContent = routeSub(r); live.lastSketch = Date.now(); }
+}
+
+function obsRow(o, delta) {
+  const d = delta != null ? `<small>${fmtSigned(delta)}</small>` : '';
+  if (o.kind === 'borne') {
+    return `<button class="orow" data-act="editObs" data-arg="${o.id}"><span class="opk">${fmtPK(o.pkB)}${d}</span><span><span class="otop"><span class="otype">Contrôle de borne</span><span class="pill ${ecCls(o.ec)}">Écart ${fmtSigned(o.ec)}</span></span><span class="ometa">PK GPS ${fmtPK(o.pk)}${o.recale ? ' · chaînage recalé ici' : ''}</span></span></button>`;
+  }
+  const meta = [COTES[o.cote] || '', o.len ? 'sur ' + nf0.format(o.len) + ' m' : ''].filter(Boolean).join(' · ');
+  return `<button class="orow" data-act="editObs" data-arg="${o.id}"><span class="opk">${fmtPK(o.pk)}${d}</span><span><span class="otop"><span class="otype">${esc(o.type)}</span><span class="pill ${GCLS[o.grav]}">${GRAV[o.grav]}</span></span><span class="ometa">${esc(meta)}</span>${o.note ? `<span class="onote">${esc(o.note)}</span>` : ''}</span></button>`;
+}
+function nearHTML(r, pk) {
+  const list = r.obs.map(o => ({ o, d: obsPk(o) - pk })).filter(x => Math.abs(x.d) <= 300).sort((a, b) => Math.abs(a.d) - Math.abs(b.d)).slice(0, 4);
+  if (!list.length) return '';
+  return `<h3 class="h3">À moins de 300 m</h3><ul class="olist">${list.map(x => `<li>${obsRow(x.o, x.d)}</li>`).join('')}</ul>`;
+}
+
+function obsHTML(r) {
+  const list = [...r.obs].sort((a, b) => obsPk(a) - obsPk(b));
+  const obs = list.filter(o => o.kind === 'obs'), bor = list.filter(o => o.kind === 'borne');
+  if (!list.length) return `<section class="card"><h3>Aucun constat</h3><p>Pendant l’enregistrement ou le repérage, touche « Constat » pour noter un défaut au PK où tu te trouves, ou « Contrôle borne » pour comparer le PK GPS à une borne.</p></section>`;
+  const g = k => obs.filter(o => o.grav == k).length;
+  const worst = bor.length ? bor.reduce((m, o) => Math.abs(o.ec) > Math.abs(m.ec) ? o : m) : null;
+  let h = `<div class="summary"><span class="pill bad">${g(3)} grave${g(3) > 1 ? 's' : ''}</span><span class="pill warn">${g(2)} moyen${g(2) > 1 ? 's' : ''}</span><span class="pill ok">${g(1)} mineur${g(1) > 1 ? 's' : ''}</span>${worst ? `<span class="pill ${ecCls(worst.ec)}">Écart max. bornes ${fmtSigned(worst.ec)}</span>` : ''}</div>`;
+  h += `<ul class="olist">${list.map(o => `<li>${obsRow(o)}</li>`).join('')}</ul>`;
+  h += `<button class="btn ghost" data-act="export" data-arg="obs">${ICON.share}Partager les constats (CSV)</button>`;
+  return h;
+}
+
+function tableHTML(r) {
+  if (r.pts.length < 2) return `<section class="card"><h3>Pas encore de tracé</h3><p>Le tableau des PK et de leurs coordonnées se remplit dès que l’itinéraire est enregistré.</p></section>`;
+  const rows = pkTable(r.pts, ui.step);
+  const z = toUTM(r.pts[0][LAT], r.pts[0][LON]);
+  const steps = [25, 50, 100, 200, 500];
+  let h = `<div class="field"><span class="lbl">Intervalle</span><div class="chips">${steps.map(s => `<button class="chip" aria-pressed="${ui.step === s}" data-act="step" data-arg="${s}">${s} m</button>`).join('')}</div></div>`;
+  h += `<div class="field"><span class="lbl">Coordonnées</span><div class="chips"><button class="chip" aria-pressed="${ui.coord === 'utm'}" data-act="coord" data-arg="utm">UTM ${z.zone}${z.hemi} (m)</button><button class="chip" aria-pressed="${ui.coord === 'deg'}" data-act="coord" data-arg="deg">Degrés WGS 84</button></div></div>`;
+  const thead = ui.coord === 'utm' ? '<th>PK</th><th>X (Est)</th><th>Y (Nord)</th>' : '<th>PK</th><th>Latitude</th><th>Longitude</th>';
+  const body = rows.map(p => {
+    const c = ui.coord === 'utm' ? (u => [nf2.format(u.x), nf2.format(u.y)])(toUTM(p.lat, p.lon, z.zone)) : [nf6.format(p.lat), nf6.format(p.lon)];
+    return `<tr class="${p.edge ? 'edge' : ''}"><td>${fmtPK(p.pk)}${p.edge ? ' <small>' + p.edge + '</small>' : ''}</td><td>${c[0]}</td><td>${c[1]}</td></tr>`;
+  }).join('');
+  h += `<div class="twrap"><table><thead><tr>${thead}</tr></thead><tbody>${body}</tbody></table></div>`;
+  h += `<p class="note">${rows.length} lignes · UTM WGS 84 zone ${z.zone}${z.hemi}. Positions interpolées sur le tracé GPS (précision de l’ordre de ±5 m) : à confirmer au levé topographique pour une implantation.</p>`;
+  h += `<button class="btn ghost" data-act="export" data-arg="table">${ICON.share}Partager le tableau (CSV)</button>`;
+  return h;
+}
+
+function filesHTML(r) {
+  const x = (arg, t, d) => `<button class="xbtn" data-act="export" data-arg="${arg}"><b>${t}</b><span>${d}</span>${ICON.share}</button>`;
+  return `<div class="xlist">
+    ${x('obs', 'Constats et bornes · CSV', 'Triés par PK, avec coordonnées GPS et UTM. S’ouvre dans Excel.')}
+    ${x('table', 'Tableau des PK · CSV', 'Coordonnées tous les ' + ui.step + ' m (intervalle choisi dans « Tableau PK »).')}
+    ${x('kml', 'Tracé et constats · KML', 'Axe, repères PK et constats, à ouvrir dans Google Earth ou QGIS.')}
+    ${x('json', 'Sauvegarde de l’itinéraire · JSON', 'Pour le garder en lieu sûr ou le passer sur un autre téléphone.')}
+  </div>
+  <h3 class="h3">Itinéraire</h3>
+  <div class="grid2"><button class="btn ghost" data-act="rename">Renommer</button><button class="btn danger" data-act="delRoute">Supprimer</button></div>`;
+}
+
+function toast(text, cls) {
+  const el = $('#toast'); el.textContent = text; el.className = 'toast show ' + (cls || '');
+  clearTimeout(toast.h); toast.h = setTimeout(() => { el.className = 'toast'; }, 2800);
+}
+
+/* ---------- Feuilles ---------- */
+function openSheet(html) { $('#sheet-body').innerHTML = html; $('#sheet').hidden = false; const f = $('#sheet-body').querySelector('input[type=text]'); if (f && !f.value) setTimeout(() => f.focus(), 50); }
+function closeSheet() { $('#sheet').hidden = true; $('#sheet-body').innerHTML = ''; ui.form = null; }
+const head = t => `<div class="sh-head"><h2>${t}</h2><button class="icon-btn" data-act="closeSheet" aria-label="Fermer">${ICON.close}</button></div>`;
+function pkInput(p, m) {
+  const v = Math.round(Math.max(0, m || 0)), km = Math.floor(v / 1000), r = v % 1000;
+  return `<div class="pkin"><span aria-hidden="true">PK</span><input id="${p}-km" type="number" inputmode="numeric" min="0" step="1" value="${km}" aria-label="Kilomètres"><span aria-hidden="true">+</span><input id="${p}-m" type="number" inputmode="numeric" min="0" max="999" step="1" value="${String(r).padStart(3, '0')}" aria-label="Mètres"></div>`;
+}
+function readPK(p) {
+  const km = parseInt($('#' + p + '-km').value, 10) || 0;
+  const m = Math.min(999, Math.max(0, parseFloat(String($('#' + p + '-m').value).replace(',', '.')) || 0));
+  return km * 1000 + m;
+}
+const chip = (g, v, l, on) => `<button class="chip" data-act="pick" data-group="${g}" data-arg="${esc(v)}" aria-pressed="${!!on}">${esc(l)}</button>`;
+function coordLine(o) {
+  if (!o || !isFinite(o.lat)) return '';
+  const u = toUTM(o.lat, o.lon);
+  return `X ${nf0.format(u.x)} · Y ${nf0.format(u.y)} (UTM ${u.zone}${u.hemi})${o.acc ? ' · ±' + nf0.format(o.acc) + ' m' : ''}`;
+}
+
+function newRouteSheet() {
+  return head('Nouvel itinéraire') + `
+  <div class="field"><label class="lbl" for="n-name">Nom de l’itinéraire</label><input id="n-name" type="text" autocomplete="off" placeholder="Ex. Lot 1 – tronçon A"></div>
+  <div class="field"><span class="lbl">PK du point de départ</span>${pkInput('n', 0)}<span class="hint">Place-toi sur ce PK avant de démarrer : le premier point GPS précis prendra cette valeur.</span></div>
+  <button class="btn red" data-act="startNew">${ICON.rec}Démarrer l’enregistrement</button>`;
+}
+
+function obsSheet(o, snap) {
+  const isNew = !o;
+  if (o && o.kind === 'borne') {
+    return head('Contrôle de borne') + `
+    <p class="sh-lead">Borne <strong>PK ${fmtPK(o.pkB)}</strong> · PK GPS ${fmtPK(o.pk)}</p>
+    <p class="ecart ${ecCls(o.ec)}">Écart GPS − borne : ${fmtSigned(o.ec)}</p>
+    <p class="hint">${coordLine(o)}${o.recale ? '<br>Le chaînage a été recalé sur cette borne.' : ''}</p>
+    <button class="btn danger" data-act="delObs" data-arg="${o.id}">Supprimer ce contrôle</button>`;
+  }
+  ui.form = { id: o ? o.id : null, type: o ? o.type : null, cote: o ? o.cote : 'A', grav: o ? o.grav : 2, snap };
+  const F = ui.form, pk = o ? o.pk : snap.pk;
+  return head(isNew ? 'Nouveau constat' : 'Modifier le constat') + `
+  <div class="field"><span class="lbl">PK</span>${pkInput('o', pk)}<span class="hint">${coordLine(o || snap)}</span></div>
+  <div class="field"><span class="lbl">Nature</span><div class="chips">${TYPES.map(t => chip('type', t, t, F.type === t)).join('')}</div></div>
+  <div class="field"><span class="lbl">Côté</span><div class="chips">${Object.entries(COTES).map(([k, v]) => chip('cote', k, v, F.cote === k)).join('')}</div></div>
+  <div class="field"><span class="lbl">Gravité</span><div class="chips">${Object.entries(GRAV).map(([k, v]) => chip('grav', k, v, F.grav == k)).join('')}</div></div>
+  <div class="field"><label class="lbl" for="o-len">Longueur concernée (m)</label><input id="o-len" type="number" inputmode="decimal" min="0" placeholder="Facultatif" value="${o && o.len ? o.len : ''}"></div>
+  <div class="field"><label class="lbl" for="o-note">Note</label><textarea id="o-note" rows="3" placeholder="Ex. eau stagnante sur 2 m de large, prévoir une purge">${esc(o ? o.note : '')}</textarea></div>
+  <div class="grid2">${isNew ? '' : `<button class="btn danger" data-act="delObs" data-arg="${o.id}">Supprimer</button>`}<button class="btn ${isNew ? 'span2' : ''}" data-act="saveObs">Enregistrer</button></div>`;
+}
+
+function borneSheet(snap) {
+  ui.form = { snap };
+  const can = live.mode === 'rec';
+  return head('Contrôle de borne') + `
+  <p class="sh-lead">PK calculé par le GPS : <strong>${fmtPK(snap.pk)}</strong></p>
+  <div class="field"><span class="lbl">PK inscrit sur la borne</span>${pkInput('b', Math.round(snap.pk / 100) * 100)}</div>
+  <p class="ecart" id="b-ec"></p>
+  ${can ? `<label class="check"><input type="checkbox" id="b-cal"><span>Recaler le chaînage sur cette borne<br><small>La suite de l’enregistrement repartira du PK de la borne. Les PK déjà enregistrés ne changent pas.</small></span></label>` : ''}
+  <button class="btn" data-act="saveBorne">Enregistrer le contrôle</button>`;
+}
+function updateEcart() {
+  const el = $('#b-ec'); if (!el || !ui.form) return;
+  const e = ui.form.snap.pk - readPK('b');
+  el.textContent = 'Écart GPS − borne : ' + fmtSigned(e); el.className = 'ecart ' + ecCls(e);
+}
+
+function settingsSheet() {
+  const S = db.settings;
+  const grp = (key, vals, unit) => `<div class="chips">${vals.map(v => `<button class="chip" data-act="set" data-arg="${key}:${v}" aria-pressed="${S[key] === v}">${unit ? '±' + v + ' ' + unit : v + ' m'}</button>`).join('')}</div>`;
+  return head('Réglages') + `
+  <div class="field"><span class="lbl">Précision GPS minimale pour enregistrer</span>${grp('maxAcc', [10, 20, 30, 50], 'm')}<span class="hint">Les positions moins précises sont ignorées. ±20 m convient en général ; ±10 m sur route dégagée.</span></div>
+  <div class="field"><span class="lbl">Pas minimal entre deux points</span>${grp('minStep', [3, 5, 10])}<span class="hint">Un pas plus grand limite l’effet du « bruit » GPS quand tu roules lentement.</span></div>
+  <div class="field"><span class="lbl">Mode test</span><div class="chips"><button class="chip" data-act="set" data-arg="sim:0" aria-pressed="${!S.sim}">GPS réel</button><button class="chip" data-act="set" data-arg="sim:1" aria-pressed="${!!S.sim}">GPS simulé</button></div><span class="hint">Le GPS simulé fait rouler un véhicule fictif, pour essayer l’appli au bureau.</span></div>
+  <div class="field"><span class="lbl">Données</span><div class="grid2"><button class="btn ghost" data-act="backupAll">Tout sauvegarder</button><button class="btn ghost" data-act="import">Importer</button></div><span class="hint">Les données restent dans ce téléphone. Fais une sauvegarde de temps en temps et envoie-la toi par WhatsApp ou e-mail.</span></div>`;
+}
+
+/* ---------- Exports ---------- */
+const csvCell = v => { v = v == null ? '' : String(v); if (/^[=+@]/.test(v) || (/^-/.test(v) && !/^-\d+([.,]\d+)?$/.test(v))) v = "'" + v; return /[;"\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+const csv = rows => '﻿' + rows.map(r => r.map(csvCell).join(';')).join('\r\n');
+const dec = (v, d) => v == null || !isFinite(v) ? '' : v.toFixed(d).replace('.', ',');
+const slug = s => (s || 'itineraire').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'itineraire';
+const today = () => new Date().toISOString().slice(0, 10);
+const escX = esc;
+
+function obsCSV(r) {
+  const z = r.pts.length ? toUTM(r.pts[0][LAT], r.pts[0][LON]).zone : null;
+  const rows = [['N°', 'Nature', 'PK', 'PK (m)', 'Côté', 'Gravité', 'Longueur (m)', 'Note', 'PK borne', 'Écart GPS − borne (m)', 'Latitude', 'Longitude', 'X UTM', 'Y UTM', 'Zone UTM', 'Précision GPS (m)', 'Date']];
+  [...r.obs].sort((a, b) => obsPk(a) - obsPk(b)).forEach((o, i) => {
+    const u = isFinite(o.lat) ? toUTM(o.lat, o.lon, z) : null;
+    const b = o.kind === 'borne';
+    rows.push([i + 1, b ? 'Contrôle de borne' : o.type, fmtPK(obsPk(o)), dec(obsPk(o), 1), b ? '' : COTES[o.cote], b ? '' : GRAV[o.grav], b ? '' : dec(o.len, 1), b ? (o.recale ? 'Chaînage recalé' : '') : o.note,
+      b ? fmtPK(o.pkB) : '', b ? dec(o.ec, 1) : '', dec(o.lat, 7), dec(o.lon, 7), u ? dec(u.x, 2) : '', u ? dec(u.y, 2) : '', u ? u.zone + u.hemi : '', dec(o.acc, 0), new Date(o.t).toLocaleString('fr-FR')]);
+  });
+  return csv(rows);
+}
+function tableCSV(r) {
+  const z = toUTM(r.pts[0][LAT], r.pts[0][LON]);
+  const rows = [['PK', 'PK (m)', 'Repère', 'Latitude', 'Longitude', 'X UTM', 'Y UTM', 'Zone UTM']];
+  pkTable(r.pts, ui.step).forEach(p => { const u = toUTM(p.lat, p.lon, z.zone); rows.push([fmtPK(p.pk), dec(p.pk, 1), p.edge || '', dec(p.lat, 7), dec(p.lon, 7), dec(u.x, 2), dec(u.y, 2), u.zone + u.hemi]); });
+  return csv(rows);
+}
+function routeKML(r) {
+  const coords = r.pts.map(p => p[LON].toFixed(7) + ',' + p[LAT].toFixed(7) + ',0').join(' ');
+  const pm = (name, desc, style, lat, lon) => `<Placemark><name>${escX(name)}</name>${desc ? `<description>${escX(desc)}</description>` : ''}<styleUrl>#${style}</styleUrl><Point><coordinates>${lon.toFixed(7)},${lat.toFixed(7)},0</coordinates></Point></Placemark>`;
+  const marks = pkTable(r.pts, Math.max(100, ui.step)).map(p => pm('PK ' + fmtPK(p.pk), p.edge || '', 'pk', p.lat, p.lon)).join('');
+  const obs = [...r.obs].sort((a, b) => obsPk(a) - obsPk(b)).filter(o => isFinite(o.lat)).map(o => o.kind === 'borne'
+    ? pm('Borne PK ' + fmtPK(o.pkB), 'PK GPS ' + fmtPK(o.pk) + ' · écart ' + fmtSigned(o.ec), 'borne', o.lat, o.lon)
+    : pm('PK ' + fmtPK(o.pk) + ' · ' + o.type, [GRAV[o.grav], COTES[o.cote], o.len ? 'sur ' + o.len + ' m' : '', o.note].filter(Boolean).join(' · '), 'obs' + o.grav, o.lat, o.lon)).join('');
+  const ic = (id, color, href, scale) => `<Style id="${id}"><IconStyle><color>${color}</color><scale>${scale}</scale><Icon><href>${href}</href></Icon></IconStyle></Style>`;
+  const dotHref = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png';
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${escX(r.name)}</name>
+<Style id="axe"><LineStyle><color>ff1c16c3</color><width>4</width></LineStyle></Style>
+${ic('pk', 'ffffffff', dotHref, 0.6)}${ic('borne', 'ff1c16c3', 'http://maps.google.com/mapfiles/kml/shapes/square.png', 0.8)}${ic('obs1', 'ff4a7a1c', dotHref, 1)}${ic('obs2', 'ff1aa0e8', dotHref, 1)}${ic('obs3', 'ff1823b4', dotHref, 1.1)}
+<Placemark><name>Axe ${escX(r.name)}</name><description>PK ${fmtPK(r.pkStart)} → ${fmtPK(lastPk(r))}</description><styleUrl>#axe</styleUrl><LineString><tessellate>1</tessellate><coordinates>${coords}</coordinates></LineString></Placemark>
+<Folder><name>Repères PK</name>${marks}</Folder>
+<Folder><name>Constats et bornes</name>${obs}</Folder>
+</Document></kml>`;
+}
+async function shareFile(name, mime, content) {
+  const blob = new Blob([content], { type: mime });
+  try {
+    const file = new File([blob], name, { type: mime });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast('Fichier prêt : ' + name);
+}
+function doExport(kind, r) {
+  const base = slug(r.name) + '_' + today();
+  if (kind === 'obs') { if (!r.obs.length) return toast('Aucun constat à partager.', 'warn'); return shareFile(base + '_constats.csv', 'text/csv', obsCSV(r)); }
+  if (r.pts.length < 2 && kind !== 'json') return toast('Le tracé est encore vide.', 'warn');
+  if (kind === 'table') return shareFile(base + '_tableau-PK-' + ui.step + 'm.csv', 'text/csv', tableCSV(r));
+  if (kind === 'kml') return shareFile(base + '.kml', 'application/vnd.google-earth.kml+xml', routeKML(r));
+  if (kind === 'json') return shareFile(base + '_sauvegarde.json', 'application/json', JSON.stringify({ app: 'PK Terrain', v: 1, exported: new Date().toISOString(), routes: [r] }));
+}
+function importBackup(text) {
+  let data; try { data = JSON.parse(text); } catch (e) { return toast('Fichier illisible : choisis une sauvegarde PK Terrain (.json).', 'bad'); }
+  const routes = data && Array.isArray(data.routes) ? data.routes.filter(r => r && r.id && Array.isArray(r.pts) && Array.isArray(r.obs)) : [];
+  if (!routes.length) return toast('Aucun itinéraire dans ce fichier.', 'warn');
+  let added = 0, updated = 0;
+  for (const r of routes) {
+    const i = db.routes.findIndex(x => x.id === r.id);
+    if (i < 0) { db.routes.push(r); added++; }
+    else if ((r.updated || 0) > (db.routes[i].updated || 0)) { db.routes[i] = r; updated++; }
+  }
+  save(true); closeSheet(); render();
+  toast(added + ' ajouté' + (added > 1 ? 's' : '') + (updated ? ', ' + updated + ' mis à jour' : ''));
+}
+
+/* ---------- Actions ---------- */
+function snapshot() {
+  const r = getRoute(live.routeId), f = live.fix;
+  if (!live.mode || !r) return null;
+  if (!f) { toast('Attends le signal GPS.', 'warn'); return null; }
+  if (live.mode === 'loc' && !live.proj) { toast('Position hors du tracé.', 'warn'); return null; }
+  return { pk: live.mode === 'rec' ? recPk(r) : live.proj.pk, lat: f.lat, lon: f.lon, acc: Math.round(f.acc) };
+}
+function arm(b, label) {
+  if (b.dataset.armed) return true;
+  b.dataset.armed = '1'; const old = b.textContent; b.textContent = label;
+  setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = old; } }, 4000);
+  return false;
+}
+const A = {
+  home() { ui.view = 'home'; render(); scrollTo(0, 0); },
+  open(id) { ui.view = 'route'; ui.routeId = id; ui.tab = 'terrain'; render(); scrollTo(0, 0); },
+  tab(t) { ui.tab = t; render(); },
+  settings() { openSheet(settingsSheet()); },
+  set(arg) {
+    const [k, v] = arg.split(':'), nv = k === 'sim' ? v === '1' : +v, changed = db.settings[k] !== nv;
+    db.settings[k] = nv; save(true); openSheet(settingsSheet());
+    if (k === 'sim' && changed) { if (live.mode) { stopLive(false); toast('Session arrêtée : relance-la avec la nouvelle source GPS.'); } render(); }
+  },
+  newRoute() { openSheet(newRouteSheet()); },
+  startNew() {
+    const name = $('#n-name').value.trim() || 'Itinéraire du ' + new Date().toLocaleDateString('fr-FR');
+    const r = { id: uid(), name, pkStart: readPK('n'), created: Date.now(), updated: Date.now(), pts: [], obs: [] };
+    db.routes.push(r); save(true); closeSheet(); startLive(r, 'rec');
+  },
+  rec() { const r = getRoute(ui.routeId); if (r) startLive(r, 'rec'); },
+  loc() { const r = getRoute(ui.routeId); if (r) startLive(r, 'loc'); },
+  resume(id) { const r = getRoute(id); if (r) startLive(r, 'rec'); },
+  dismissActive() { db.active = null; save(true); render(); },
+  pause() { live.paused = !live.paused; updateLive(); },
+  finish() { const r = getRoute(live.routeId); stopLive(); if (r) toast('Itinéraire enregistré : PK ' + fmtPK(r.pkStart) + ' → ' + fmtPK(lastPk(r))); },
+  stop() { stopLive(); },
+  obs() { const s = snapshot(); if (s) openSheet(obsSheet(null, s)); },
+  borne() { const s = snapshot(); if (s) { openSheet(borneSheet(s)); updateEcart(); } },
+  pick(v, b) {
+    const g = b.dataset.group; ui.form[g] = g === 'grav' ? +v : v;
+    b.parentElement.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+  },
+  saveObs() {
+    const F = ui.form, r = getRoute(ui.routeId); if (!F || !r) return;
+    if (!F.type) return toast('Choisis la nature du constat.', 'warn');
+    const pk = readPK('o'), len = parseFloat(($('#o-len').value || '').replace(',', '.')), note = $('#o-note').value.trim();
+    const data = { pk, type: F.type, cote: F.cote, grav: F.grav, len: isFinite(len) && len > 0 ? len : null, note };
+    if (F.id) Object.assign(r.obs.find(o => o.id === F.id), data);
+    else r.obs.push(Object.assign({ id: uid(), kind: 'obs', lat: F.snap.lat, lon: F.snap.lon, acc: F.snap.acc, t: Date.now() }, data));
+    touch(r); save(true); closeSheet(); render(); toast('Constat noté au PK ' + fmtPK(pk));
+  },
+  saveBorne() {
+    const F = ui.form, r = getRoute(live.routeId); if (!F || !r) return;
+    const pkB = readPK('b'), s = F.snap, cal = !!($('#b-cal') && $('#b-cal').checked);
+    r.obs.push({ id: uid(), kind: 'borne', pk: s.pk, pkB, ec: s.pk - pkB, lat: s.lat, lon: s.lon, acc: s.acc, t: Date.now(), recale: cal });
+    if (cal && live.mode === 'rec') {
+      const f = live.fix;
+      if (f && f.acc <= db.settings.maxAcc && r.pts.length) r.pts.push([f.lat, f.lon, pkB, Math.round(f.acc), f.t]);
+      else if (r.pts.length) r.pts[r.pts.length - 1][PK] = pkB;
+    }
+    touch(r); save(true); closeSheet(); render();
+    toast('Borne PK ' + fmtPK(pkB) + ' · écart ' + fmtSigned(s.pk - pkB) + (cal ? ' · recalé' : ''));
+  },
+  editObs(id) { const r = getRoute(ui.routeId); const o = r && r.obs.find(x => x.id === id); if (o) openSheet(obsSheet(o, null)); },
+  delObs(id, b) {
+    if (!arm(b, 'Confirmer la suppression')) return;
+    const r = getRoute(ui.routeId); r.obs = r.obs.filter(o => o.id !== id); touch(r); save(true); closeSheet(); render(); toast('Supprimé');
+  },
+  step(v) { ui.step = +v; render(); },
+  coord(v) { ui.coord = v; render(); },
+  export(kind) { const r = getRoute(ui.routeId); if (r) doExport(kind, r); },
+  backupAll() { if (!db.routes.length) return toast('Rien à sauvegarder pour l’instant.', 'warn'); shareFile('pk-terrain_sauvegarde_' + today() + '.json', 'application/json', JSON.stringify({ app: 'PK Terrain', v: 1, exported: new Date().toISOString(), routes: db.routes })); },
+  import() { $('#imp').value = ''; $('#imp').click(); },
+  rename() {
+    const r = getRoute(ui.routeId);
+    openSheet(head('Renommer') + `<div class="field"><label class="lbl" for="rn">Nom de l’itinéraire</label><input id="rn" type="text" value="${esc(r.name)}"></div><button class="btn" data-act="saveName">Enregistrer</button>`);
+  },
+  saveName() { const r = getRoute(ui.routeId), v = $('#rn').value.trim(); if (v) { r.name = v; touch(r); save(true); } closeSheet(); render(); },
+  delRoute(_, b) {
+    if (!arm(b, 'Confirmer')) return;
+    if (live.routeId === ui.routeId) stopLive(false);
+    db.routes = db.routes.filter(r => r.id !== ui.routeId);
+    if (db.active && db.active.routeId === ui.routeId) db.active = null;
+    save(true); ui.view = 'home'; render(); toast('Itinéraire supprimé');
+  },
+  closeSheet() { closeSheet(); }
+};
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (b) { const f = A[b.dataset.act]; if (f) f(b.dataset.arg, b, e); return; }
+  if (e.target.id === 'sheet') closeSheet();
+});
+$('#sheet-body').addEventListener('input', e => { if (e.target.id === 'b-km' || e.target.id === 'b-m') updateEcart(); });
+$('#imp').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const rd = new FileReader(); rd.onload = () => importBackup(String(rd.result)); rd.readAsText(f);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') save(true);
+  else if (live.mode) { keepAwake(); updateLive(); }
+});
+addEventListener('pagehide', () => save(true));
+setInterval(() => { if (live.mode) updateLive(); }, 1000);
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
+render();
+</script>
+</body>
+</html>
