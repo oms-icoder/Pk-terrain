@@ -132,8 +132,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .lg.s{background:var(--surface);box-shadow:inset 0 0 0 2px var(--ink)} .lg.e{background:var(--ink)} .lg.o{background:var(--warn)} .lg.b{background:var(--cap);border-radius:2px} .lg.h{background:var(--here)}
 
 /* Onglets */
-.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:var(--sunk);padding:4px;border-radius:13px;box-shadow:inset 0 0 0 1.5px var(--line)}
-.tab{border:0;background:transparent;color:var(--muted);font:600 14px/1.1 var(--f-body);padding:11px 2px;border-radius:9px;min-width:0}
+.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;background:var(--sunk);padding:4px;border-radius:13px;box-shadow:inset 0 0 0 1.5px var(--line)}
+.tab{border:0;background:transparent;color:var(--muted);font:600 13.5px/1.1 var(--f-body);padding:11px 1px;border-radius:9px;min-width:0}
 .tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.14),inset 0 0 0 1px var(--line)}
 
 /* Listes */
@@ -235,17 +235,72 @@ textarea{resize:vertical}
 .sheet{cursor:auto}
 .toast.has-act{pointer-events:auto;display:flex;align-items:center;gap:14px}
 .toast-btn{border:0;background:transparent;color:inherit;font:700 15px var(--f-body);text-decoration:underline;text-underline-offset:3px;padding:6px 2px;min-height:36px}
+/* v3 : organisation, photos, ouvrages */
+.loading{margin:0;padding:40px 0;text-align:center;color:var(--muted)}
+.vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;opacity:0}
+.eyebrow{margin:0 0 3px;font:600 12px/1.2 var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.top .eyebrow{margin-bottom:4px}
+.cmark{width:50px;border-radius:15px 15px 4px 4px;overflow:hidden;box-shadow:inset 0 0 0 1.5px var(--line);text-align:center;background:var(--surface)}
+.cmark i{display:block;height:11px;background:var(--cap)}
+.cmark b{display:block;font:700 17px/1 var(--f-display);padding:8px 2px 9px;letter-spacing:.02em}
+.mcard{background:var(--surface);border-radius:var(--radius);box-shadow:inset 0 0 0 1.5px var(--line);padding:14px;display:grid;gap:12px}
+.mhead{display:flex;align-items:flex-start;gap:12px}
+.mhead h3{margin:0;font:700 20px/1.15 var(--f-display);letter-spacing:.01em;text-wrap:balance}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin:0}
+.facts.one{grid-template-columns:minmax(0,1fr)}
+.facts div{min-width:0}
+.facts dt{font:600 12px/1.2 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.sel{user-select:text;-webkit-user-select:text}
+.ilist{list-style:none;margin:0;padding:0;background:var(--sunk);border-radius:12px;box-shadow:inset 0 0 0 1.5px var(--line);overflow:hidden}
+.ilist li+li{border-top:1px solid var(--line)}
+.irow{display:grid;grid-template-columns:3.4em minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);padding:11px 12px}
+.irow b{display:block;font-weight:600;overflow-wrap:anywhere}
+.irow small{display:block;color:var(--muted);font-size:13.5px;margin-top:1px}
+.irow svg{width:18px;height:18px;color:var(--muted)}
+.icode{font:700 18px/1 var(--f-display);font-variant-numeric:tabular-nums;color:var(--ink);overflow-wrap:anywhere}
+.rlist li.cls{display:grid;gap:6px}
+.rlist li.cls>.btn{justify-self:end}
+.warnbar{background:var(--warn-bg)}
+.warnbar span{color:var(--warn)}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px}
+.thumbs:empty{display:none}
+.thumb{width:76px;height:76px;padding:0;border:0;border-radius:10px;overflow:hidden;background:var(--sunk);box-shadow:inset 0 0 0 1.5px var(--line)}
+.thumb img,.othumb img{width:100%;height:100%;object-fit:cover;display:block}
+.othumb{width:48px;height:48px;border-radius:8px;overflow:hidden;background:var(--sunk);flex:none}
+.orow:has(.othumb){grid-template-columns:5.4em minmax(0,1fr) auto}
+.viewer{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.viewer img{max-width:100%;max-height:calc(100% - 80px);object-fit:contain;border-radius:8px}
+.vbar{display:flex;gap:10px;width:100%;max-width:520px}
+.vbar .btn{flex:1}
+.radios{display:grid;gap:8px}
+.radio{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;background:var(--sunk);border-radius:12px;padding:12px;box-shadow:inset 0 0 0 1.5px var(--line)}
+.radio input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--cap)}
+.radio b{display:block;font-weight:600;overflow-wrap:anywhere}
+.radio small{display:block;color:var(--muted);font-size:14px}
+.or{margin:0;text-align:center;color:var(--muted);font-weight:600}
+select,input[type=date],input[type=tel],input[type=email]{font:500 17px/1.3 var(--f-body);color:var(--ink);background:var(--sunk);border:1.5px solid var(--line);border-radius:10px;padding:12px;width:100%;min-width:0;appearance:none;-webkit-appearance:none}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px;background-repeat:no-repeat;padding-right:36px}
+input[type=date]{min-height:50px}
+.code2{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
+.qiti{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.qiti label{display:grid;gap:4px;font-weight:600;font-size:14px;color:var(--muted)}
+.qiti input{font:500 16px/1.2 var(--f-body);color:var(--ink);background:var(--sunk);border:1.5px solid var(--line);border-radius:10px;padding:10px;width:100%;min-width:0}
+.sk-ouv{fill:var(--here);stroke:var(--surface);stroke-width:1.5}
+.lg.t{background:var(--here);clip-path:polygon(50% 0,100% 100%,0 100%);border-radius:0}
+.pill.neu{background:var(--sunk);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
 </style>
 </head>
 <body>
-<div class="wrap" id="app"></div>
+<div class="wrap" id="app"><p class="loading">Chargement…</p></div>
 <div id="sheet" class="backdrop" hidden><div class="sheet" id="sheet-body" role="dialog" aria-modal="true"></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<input type="file" id="imp" accept=".json,application/json" hidden>
+<input type="file" id="imp" accept=".json,application/json" class="vh" tabindex="-1" aria-hidden="true">
+<div id="viewer" class="viewer" hidden role="dialog" aria-modal="true"></div>
 
 <script>
 'use strict';
-const APP_VERSION = '2.0';
+const APP_VERSION = '3.0';
 
 /*GEO-START*/
 const RE = 6371008.8, DEG = Math.PI / 180;
@@ -484,44 +539,198 @@ function unrecal(r, o) {
 }
 /*GEO-END*/
 
-/* ---------- Données ---------- */
+/* ---------- Référentiels ---------- */
 const KEY = 'pkterrain.v1', UKEY = 'pkterrain.undo';
 const DEF = { maxAcc: 20, minStep: 5, sim: false };
 const TYPES = ['Nid-de-poule', 'Ravinement', 'Bourbier', 'Tôle ondulée', 'Défaut de profil', 'Compactage', 'Assainissement / fossé', 'Ouvrage (buse, dalot)', 'Autre'];
 const COTES = { G: 'Gauche', A: 'Axe', D: 'Droite', GD: 'Les deux côtés' };
 const GRAV = { 1: 'Mineure', 2: 'Moyenne', 3: 'Grave' };
 const GCLS = { 1: 'ok', 2: 'warn', 3: 'bad' };
+const OTYPES = ['Buse Ø800', 'Buse Ø1000', '2 buses Ø800', '2 buses Ø1000', '3 buses Ø1000', 'Dalot', 'Radier', 'Point de coupure', 'Autre'];
+const OTRAV = ['Neuf', 'Réhabilitation', 'Allongement', 'Curage'];
+const OETAT = { prevu: 'Prévu', cours: 'En cours', fini: 'Terminé', recu: 'Réceptionné' };
+const OECLS = { prevu: 'neu', cours: 'warn', fini: 'ok', recu: 'ok' };
+const ITYPES = ['Réhabilitation', 'Entretien'];
+const MAXPH = 6;
 
-function migrate(s) {
-  for (const r of s.routes) {
-    if (!Array.isArray(r.obs)) r.obs = [];
-    if (!Array.isArray(r.pts)) r.pts = [];
-    for (const o of r.obs) { if (!o.src) o.src = 'gps'; if (o.kind === 'borne' && o.note == null) o.note = ''; }
+const emptyRef = () => ({ profile: {}, mission: {}, companies: [], markets: [], postes: [], structures: [] });
+const blankDb = () => ({ routes: [], ref: emptyRef(), settings: Object.assign({}, DEF), active: null, lastBackup: null, migratedAt: null });
+let db = blankDb();
+let undo = null;
+
+function normRoute(r) {
+  if (!Array.isArray(r.obs)) r.obs = [];
+  if (!Array.isArray(r.pts)) r.pts = [];
+  if (r.pkStart == null) r.pkStart = r.pts.length ? r.pts[0][PK] : 0;
+  if (!r.name) r.name = 'Itinéraire';
+  for (const o of r.obs) {
+    if (!o.src) o.src = 'gps';
+    if (o.kind === 'borne' && o.note == null) o.note = '';
+    if (!Array.isArray(o.photos)) o.photos = [];
+  }
+  return r;
+}
+function normalize(d) {
+  d.settings = Object.assign({}, DEF, d.settings || {});
+  const ref = Object.assign(emptyRef(), d.ref || {});
+  for (const k of ['companies', 'markets', 'postes', 'structures']) if (!Array.isArray(ref[k])) ref[k] = [];
+  if (!ref.profile || typeof ref.profile !== 'object') ref.profile = {};
+  if (!ref.mission || typeof ref.mission !== 'object') ref.mission = {};
+  d.ref = ref;
+  d.routes = (Array.isArray(d.routes) ? d.routes : []).filter(r => r && r.id).map(normRoute);
+  return d;
+}
+function readLS() {
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.routes)) return s; } catch (e) { }
+  return null;
+}
+
+/* ---------- Stockage : base interne du navigateur (IndexedDB), repli sur le stockage simple ---------- */
+function idbOpen() {
+  return new Promise((res, rej) => {
+    if (!('indexedDB' in window)) return rej(new Error('indisponible'));
+    let q; try { q = indexedDB.open('pkterrain', 1); } catch (e) { return rej(e); }
+    q.onupgradeneeded = () => {
+      const d = q.result;
+      if (!d.objectStoreNames.contains('routes')) d.createObjectStore('routes', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta');
+      if (!d.objectStoreNames.contains('photos')) d.createObjectStore('photos', { keyPath: 'id' });
+    };
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+    q.onblocked = () => rej(new Error('bloqué'));
+  });
+}
+const idbReq = q => new Promise((res, rej) => { q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+const metaDoc = () => ({ v: 3, ref: db.ref, settings: db.settings, active: db.active, lastBackup: db.lastBackup, migratedAt: db.migratedAt });
+
+const Store = {
+  mode: 'ls', idb: null, dirty: new Set(), gone: new Set(), timer: null, persisted: null, failed: false,
+  async init() {
+    try { this.idb = await idbOpen(); this.mode = 'idb'; } catch (e) { this.mode = 'ls'; }
+    if (this.mode === 'idb') {
+      try {
+        const st = this.idb.transaction(['meta', 'routes']);
+        const meta = await idbReq(st.objectStore('meta').get('state'));
+        if (meta) {
+          const routes = await idbReq(st.objectStore('routes').getAll());
+          const u = await idbReq(st.objectStore('meta').get('undo'));
+          db = normalize(Object.assign(blankDb(), meta, { routes }));
+          undo = u || null;
+          return;
+        }
+      } catch (e) { this.mode = 'ls'; }
+    }
+    const old = readLS();
+    if (old) {
+      db = normalize(Object.assign(blankDb(), old));
+      try { undo = JSON.parse(localStorage.getItem(UKEY)); } catch (e) { undo = null; }
+    } else db = normalize(blankDb());
+    if (this.mode === 'idb') {
+      db.migratedAt = Date.now();
+      db.routes.forEach(r => this.dirty.add(r.id));
+      await this.flush();          // la copie de l'ancienne version reste dans le stockage simple, intacte
+    }
+  },
+  mark(id) { this.dirty.add(id); this.gone.delete(id); },
+  drop(id) { this.gone.add(id); this.dirty.delete(id); },
+  schedule() { if (!this.timer) this.timer = setTimeout(() => { this.timer = null; this.flush(); }, 3000); },
+  async flush() {
+    clearTimeout(this.timer); this.timer = null;
+    if (this.mode === 'idb') {
+      const ids = [...this.dirty], gone = [...this.gone];
+      this.dirty.clear(); this.gone.clear();
+      try {
+        await new Promise((res, rej) => {
+          const t = this.idb.transaction(['routes', 'meta'], 'readwrite'), rs = t.objectStore('routes');
+          for (const id of ids) { const r = getRoute(id); if (r) rs.put(r); }
+          for (const id of gone) rs.delete(id);
+          t.objectStore('meta').put(metaDoc(), 'state');
+          t.objectStore('meta').put(undo || null, 'undo');
+          t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+        });
+        this.failed = false;
+      } catch (e) {
+        ids.forEach(i => this.dirty.add(i)); gone.forEach(i => this.gone.add(i));
+        if (!this.failed) toast('Enregistrement impossible : la mémoire du téléphone est peut-être pleine.', 'bad');
+        this.failed = true;
+      }
+    } else {
+      try { localStorage.setItem(KEY, JSON.stringify(Object.assign(metaDoc(), { routes: db.routes }))); }
+      catch (e) { toast('Mémoire pleine : exporte une sauvegarde puis supprime un ancien itinéraire.', 'bad'); }
+      try { if (undo) localStorage.setItem(UKEY, JSON.stringify(undo)); else localStorage.removeItem(UKEY); } catch (e) { }
+    }
+  }
+};
+function save(now) { if (now) return Store.flush(); Store.schedule(); }
+async function askPersist() {
+  try {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    Store.persisted = await navigator.storage.persisted();
+    if (!Store.persisted) Store.persisted = await navigator.storage.persist();
+  } catch (e) { }
+}
+
+/* ---------- Photos ---------- */
+const canPhoto = () => Store.mode === 'idb';
+function photoTx(mode, fn) {
+  return new Promise((res, rej) => {
+    const t = Store.idb.transaction('photos', mode), out = fn(t.objectStore('photos'));
+    t.oncomplete = () => res(out && out.result !== undefined ? out.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+const photoPut = rec => photoTx('readwrite', s => { s.put(rec); });
+const photoGet = id => photoTx('readonly', s => s.get(id));
+const photoKeys = () => photoTx('readonly', s => s.getAllKeys());
+const photoDelete = ids => photoTx('readwrite', s => { ids.forEach(i => s.delete(i)); });
+const photoURLs = new Map();
+async function photoURL(id) {
+  if (photoURLs.has(id)) return photoURLs.get(id);
+  try { const p = await photoGet(id); if (!p || !p.blob) return null; const u = URL.createObjectURL(p.blob); photoURLs.set(id, u); return u; } catch (e) { return null; }
+}
+function hydratePhotos(root) {
+  if (!canPhoto()) return;
+  (root || document).querySelectorAll('img[data-photo]:not([src])').forEach(async img => { const u = await photoURL(img.dataset.photo); if (u) img.src = u; });
+}
+async function compressImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('image')); i.src = url; });
+    const max = 1600, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * sc)), h = Math.max(1, Math.round(img.naturalHeight * sc));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.72));
+    if (!blob) throw new Error('image');
+    return { blob, w, h };
+  } finally { URL.revokeObjectURL(url); }
+}
+function referencedPhotos(withUndo) {
+  const s = new Set();
+  const scan = routes => { for (const r of routes || []) for (const o of (r && r.obs) || []) for (const p of o.photos || []) s.add(p); };
+  scan(db.routes);
+  if (withUndo && undo) {
+    if (undo.obsOnly) for (const o of undo.routes[0].data || []) for (const p of o.photos || []) s.add(p);
+    else scan(undo.routes.map(x => x.data).filter(Boolean));
   }
   return s;
 }
-function load() {
+async function gcPhotos() {
+  if (!canPhoto()) return;
   try {
-    const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.routes)) { s.settings = Object.assign({}, DEF, s.settings || {}); return migrate(s); }
+    const keys = await photoKeys(), used = referencedPhotos(true), old = Date.now() - 2 * 864e5;
+    const drop = [];
+    for (const k of keys) if (!used.has(k)) { const p = await photoGet(k); if (p && (p.t || 0) < old) drop.push(k); }
+    if (drop.length) await photoDelete(drop);
   } catch (e) { }
-  return { v: 1, routes: [], settings: Object.assign({}, DEF), active: null };
 }
-let db = load();
-let saveTimer = null;
-function persist() {
-  try { localStorage.setItem(KEY, JSON.stringify(db)); }
-  catch (e) { toast('Mémoire pleine : exporte une sauvegarde puis supprime un ancien itinéraire.', 'bad'); }
-}
-function save(now) {
-  if (now) { clearTimeout(saveTimer); saveTimer = null; persist(); return; }
-  if (!saveTimer) saveTimer = setTimeout(() => { saveTimer = null; persist(); }, 3000);
-}
+
+/* ---------- Accès aux données ---------- */
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const getRoute = id => db.routes.find(r => r.id === id);
 const lastPk = r => r.pts.length ? r.pts[r.pts.length - 1][PK] : r.pkStart;
 const firstPk = r => r.pts.length ? r.pts[0][PK] : r.pkStart;
-const touch = r => { r.updated = Date.now(); };
+const touch = r => { r.updated = Date.now(); Store.mark(r.id); };
 const pathLen = r => pathLenPts(r.pts);
 const obsPk = o => o.kind === 'borne' ? o.pkB : o.pk;
 function commitRoute(r) {
@@ -531,24 +740,45 @@ function commitRoute(r) {
   save(true);
   return r;
 }
+function dropRoute(id) { db.routes = db.routes.filter(x => x.id !== id); Store.drop(id); if (db.active && db.active.routeId === id) db.active = null; }
+const comp = id => db.ref.companies.find(c => c.id === id);
+const mkt = id => db.ref.markets.find(m => m.id === id);
+const routeMkt = r => r && r.marketId ? mkt(r.marketId) : null;
+const routeComp = r => { const m = routeMkt(r); return m ? comp(m.companyId) : null; };
+const routeTitle = r => (r.code ? r.code + ' · ' : '') + r.name;
+const compName = c => c ? (c.sigle || c.nom || 'Entreprise') : '';
+const mktLabel = m => m ? [m.lot ? 'Lot ' + m.lot : '', m.intitule || ''].filter(Boolean).join(' · ') || 'Marché' : '';
+const mktsOf = c => db.ref.markets.filter(m => m.companyId === c.id);
+const routesOf = m => db.ref && db.routes.filter(r => r.marketId === m.id).sort((a, b) => String(a.code || a.name).localeCompare(String(b.code || b.name), 'fr', { numeric: true }));
+const ouvsOf = r => db.ref.structures.filter(s => s.routeId === r.id).sort((a, b) => (a.pk ?? 1e12) - (b.pk ?? 1e12));
+const postesOf = m => db.ref.postes.filter(p => p.marketId === m.id);
+const refTouch = e => { e.updated = Date.now(); };
+const stamp = () => Date.now();
 
-/* ---------- Annuler (une seule étape, conservée en mémoire du téléphone) ---------- */
-let undo = null;
-try { undo = JSON.parse(localStorage.getItem(UKEY)); } catch (e) { undo = null; }
-function remember(r, label, scope, deleted) {
-  undo = { routeId: r.id, label, scope: scope || 'route', deleted: !!deleted, t: Date.now(), data: clone(scope === 'obs' ? r.obs : r) };
-  try { localStorage.setItem(UKEY, JSON.stringify(undo)); } catch (e) { try { localStorage.removeItem(UKEY); } catch (e2) { } }
+/* ---------- Annuler (une étape) ---------- */
+function remember(label, o) {
+  o = o || {};
+  const routes = (o.routes || []).map(r => typeof r === 'string' ? { id: r, data: null } : { id: r.id, data: clone(o.obsOnly ? r.obs : r) });
+  undo = { label, t: Date.now(), obsOnly: !!o.obsOnly, routes, ref: o.ref ? clone(db.ref) : null, deleted: !!o.deleted };
 }
-function clearUndo() { undo = null; try { localStorage.removeItem(UKEY); } catch (e) { } }
+function clearUndo() { undo = null; Store.schedule(); }
 const undoFresh = () => undo && Date.now() - undo.t < 30 * 60 * 1000;
+const undoTouches = id => undo && undo.routes.some(x => x.id === id);
 function doUndo() {
   if (!undo) return;
-  const u = undo; clearUndo();
-  if (u.scope === 'obs') {
-    const r = getRoute(u.routeId); if (!r) return toast('Itinéraire introuvable.', 'warn');
-    r.obs = u.data; commitRoute(r);
-  } else commitRoute(u.data);
-  closeSheet(); render(); toast('Annulé : ' + u.label);
+  const u = undo; undo = null;
+  if (u.obsOnly) {
+    const r = getRoute(u.routes[0].id); if (r) { r.obs = u.routes[0].data; touch(r); }
+  } else {
+    for (const x of u.routes) {
+      if (!x.data) { dropRoute(x.id); continue; }
+      const i = db.routes.findIndex(r => r.id === x.id), r = normRoute(x.data);
+      if (i < 0) db.routes.push(r); else db.routes[i] = r;
+      Store.mark(r.id);
+    }
+  }
+  if (u.ref) db.ref = u.ref;
+  save(true); closeSheet(); render(); toast('Annulé : ' + u.label);
 }
 
 /* ---------- Formats ---------- */
@@ -558,15 +788,21 @@ const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const nf2 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const nf6 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+const nfq = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
 function fmtDist(m) { if (m == null || !isFinite(m)) return '—'; return m < 1000 ? nf0.format(m) + ' m' : nf2.format(m / 1000) + ' km'; }
+const fmtKm = km => km == null || !isFinite(km) ? '—' : nf1.format(km) + ' km';
+const fmtMoney = v => v == null || !isFinite(v) ? '—' : nf0.format(v) + ' F CFA';
 function fmtDur(ms) {
   const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
   return h ? h + ' h ' + String(m).padStart(2, '0') : m + ' min ' + String(x).padStart(2, '0');
 }
 function fmtDate(t) { return new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }); }
+const fmtDay = iso => { if (!iso) return '—'; const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); };
 function fmtSigned(m) { const v = Math.round(m); return (v > 0 ? '+' : v < 0 ? '−' : '±') + nf0.format(Math.abs(v)) + ' m'; }
 const ecCls = e => Math.abs(e) <= 10 ? 'ok' : Math.abs(e) <= 30 ? 'warn' : 'bad';
 const plural = (n, one, many) => n + ' ' + (n > 1 ? many : one);
+const num = v => { const x = parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.')); return isFinite(x) ? x : null; };
+const daysAgo = t => Math.floor((Date.now() - t) / 864e5);
 
 const ICON = {
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
@@ -577,12 +813,14 @@ const ICON = {
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   rec: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="currentColor"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
-  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>'
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
+  camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>'
 };
 
 /* ---------- État de session ---------- */
-const ui = { view: 'home', routeId: null, tab: 'terrain', step: 100, coord: 'utm', form: null, lastPk: {} };
-const live = { mode: null, routeId: null, paused: false, watchId: null, fix: null, prev: null, pk: null, proj: null, startedAt: 0, startPk: 0, err: null, gap: null, wake: null, simTimer: null, simS: 0, lastSketch: 0 };
+const ui = { view: 'home', routeId: null, companyId: null, marketId: null, tab: 'terrain', step: 100, coord: 'utm', form: null, lastPk: {}, pending: null };
+const live = { mode: null, routeId: null, paused: false, watchId: null, fix: null, prev: null, pk: null, proj: null, startedAt: 0, startPk: 0, startLen: 0, err: null, gap: null, wake: null, simTimer: null, simS: 0, lastSketch: 0 };
 const recording = r => live.mode === 'rec' && live.routeId === r.id;
 const isLiveOn = r => !!live.mode && live.routeId === r.id;
 
@@ -632,8 +870,6 @@ function recPk(r) {
   const d = hav(L[LAT], L[LON], f.lat, f.lon);
   return d < 60 ? L[PK] + d : L[PK];
 }
-
-/* Mode test : un véhicule fictif roule à ~30 km/h sur une piste sinueuse. */
 function simPos(s) {
   const lat0 = 9.4925, lon0 = -7.5640;
   const north = s * 0.96, east = 140 * Math.sin(s / 520) + 35 * Math.sin(s / 130);
@@ -649,15 +885,13 @@ function startSim() {
   live.simTimer = setInterval(tick, 1000);
   setTimeout(tick, 300);
 }
-
 async function keepAwake() {
   try { if ('wakeLock' in navigator && document.visibilityState === 'visible') live.wake = await navigator.wakeLock.request('screen'); } catch (e) { }
 }
-
 function startLive(r, mode) {
   stopLive(false);
   Object.assign(live, { mode, routeId: r.id, paused: false, fix: null, pk: mode === 'rec' ? lastPk(r) : null, proj: null, err: null, gap: null, startedAt: Date.now(), startPk: lastPk(r), startLen: pathLen(r), lastSketch: 0 });
-  if (mode === 'rec') { db.active = { routeId: r.id }; save(true); if (undo && undo.routeId === r.id && undo.scope === 'route') clearUndo(); }
+  if (mode === 'rec') { db.active = { routeId: r.id }; if (undo && !undo.obsOnly && undoTouches(r.id)) undo = null; save(true); }
   ui.view = 'route'; ui.routeId = r.id; ui.tab = 'terrain';
   startGeo(); keepAwake();
   render(); scrollTo(0, 0);
@@ -698,11 +932,12 @@ function sketchSVG(r, o = {}) {
   for (let i = 0; i < pts.length; i += step) xy.push(X(pts[i][LAT], pts[i][LON]));
   const Lp = pts[pts.length - 1]; xy.push(X(Lp[LAT], Lp[LON]));
   const obs = r.obs.filter(hasPos).map(x => ({ o: x, p: X(x.lat, x.lon) }));
+  const ouv = ouvsOf(r).filter(hasPos).map(x => ({ o: x, p: X(x.lat, x.lon) }));
   const here = o.here ? X(o.here[0], o.here[1]) : null;
   const mk = o.mark != null ? pkToPos(pts, o.mark) : null, mark = mk ? X(mk.lat, mk.lon) : null;
   let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
   const ext = p => { mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]); mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]); };
-  xy.forEach(ext); obs.forEach(x => ext(x.p)); if (here) ext(here);
+  xy.forEach(ext); obs.forEach(x => ext(x.p)); ouv.forEach(x => ext(x.p)); if (here) ext(here);
   const aw = W - 2 * P;
   const H = Math.round(Math.min(300, Math.max(168, aw * Math.max(mxy - mny, 30) / Math.max(mxx - mnx, 30) + 2 * P + B)));
   const ah = H - 2 * P - B;
@@ -719,6 +954,7 @@ function sketchSVG(r, o = {}) {
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Croquis du tracé, ${esc(fmtDist(pathLen(r)))}">`;
   s += `<polyline class="sk-line" points="${line}"/>`;
   if (o.cut) { const d = cutPath(pts, o.cut[0], o.cut[1], X, sx, sy); if (d) s += `<path class="sk-cut" d="${d}"/>`; }
+  for (const { p } of ouv) { const x = sx(p), y = sy(p); s += `<path class="sk-ouv" d="M${f1(x)} ${f1(y - 6)}L${f1(x + 6)} ${f1(y + 5)}L${f1(x - 6)} ${f1(y + 5)}Z"/>`; }
   for (const { o: x, p } of obs) {
     if (x.kind === 'borne') s += `<rect class="sk-borne" x="${f1(sx(p) - 4.5)}" y="${f1(sy(p) - 4.5)}" width="9" height="9" rx="1.5"/>`;
     else s += `<circle class="sk-obs g${x.grav}" cx="${f1(sx(p))}" cy="${f1(sy(p))}" r="5"/>`;
@@ -732,60 +968,137 @@ function sketchSVG(r, o = {}) {
   s += `<text class="sk-txt" x="${W - P}" y="${P}" text-anchor="end">N ↑</text></svg>`;
   return s;
 }
-const LEGEND = '<div class="legend"><span><i class="lg s"></i>Début</span><span><i class="lg e"></i>Fin</span><span><i class="lg o"></i>Constat</span><span><i class="lg b"></i>Borne</span><span><i class="lg h"></i>Ta position</span></div>';
+const LEGEND = '<div class="legend"><span><i class="lg s"></i>Début</span><span><i class="lg e"></i>Fin</span><span><i class="lg o"></i>Constat</span><span><i class="lg b"></i>Borne</span><span><i class="lg t"></i>Ouvrage</span><span><i class="lg h"></i>Ta position</span></div>';
 const liveHere = r => (isLiveOn(r) && live.fix) ? [live.fix.lat, live.fix.lon] : null;
 
 /* ---------- Vues ---------- */
 function render() {
   const app = $('#app');
-  app.innerHTML = ui.view === 'route' && getRoute(ui.routeId) ? routeHTML(getRoute(ui.routeId)) : (ui.view = 'home', homeHTML());
+  let html;
+  if (ui.view === 'route' && getRoute(ui.routeId)) html = routeHTML(getRoute(ui.routeId));
+  else if (ui.view === 'company' && comp(ui.companyId)) html = companyHTML(comp(ui.companyId));
+  else if (ui.view === 'bordereau' && mkt(ui.marketId)) html = bordereauHTML(mkt(ui.marketId));
+  else { ui.view = 'home'; html = homeHTML(); }
+  app.innerHTML = html;
+  hydratePhotos(app);
   if (ui.view === 'route' && ui.tab === 'terrain') { live.lastSketch = 0; updateLive(); }
 }
 const undoBar = text => `<div class="undo" role="status"><span>${esc(text)}</span><button class="btn ghost sm" data-act="undo">Annuler</button></div>`;
+const topBar = (backAct, backArg, title, sub, extra) => `<header class="top"><button class="icon-btn" data-act="${backAct}"${backArg ? ` data-arg="${esc(backArg)}"` : ''} aria-label="Retour">${ICON.back}</button><div class="grow">${title}${sub ? `<p class="sub">${sub}</p>` : ''}</div>${extra || ''}</header>`;
+
+function companyCounts(c) {
+  const ms = mktsOf(c).filter(m => !m.archived), rs = db.routes.filter(r => ms.some(m => m.id === r.marketId) && !r.archived);
+  const n = rs.reduce((s, r) => s + r.obs.filter(o => o.kind === 'obs').length, 0);
+  return [plural(ms.length, 'marché', 'marchés'), plural(rs.length, 'itinéraire', 'itinéraires'), plural(n, 'constat', 'constats')].join(' · ');
+}
+const initials = s => { const w = String(s || '?').replace(/[^A-Za-zÀ-ÿ0-9 ]/g, ' ').trim().split(/\s+/).filter(Boolean); return (w.length > 1 ? w.map(x => x[0]).join('') : (w[0] || '?')).slice(0, 3).toUpperCase(); };
 
 function homeHTML() {
-  const routes = [...db.routes].sort((a, b) => (b.updated || 0) - (a.updated || 0));
-  const S = db.settings;
-  let h = `<header class="top"><span class="mark" aria-hidden="true"></span><div class="grow"><h1>PK Terrain</h1><p class="sub">Chaînage GPS et constats par PK</p></div><button class="icon-btn" data-act="settings" aria-label="Réglages">${ICON.gear}</button></header>`;
+  const S = db.settings, P = db.ref.profile || {};
+  const companies = db.ref.companies.filter(c => !c.archived).sort((a, b) => compName(a).localeCompare(compName(b), 'fr'));
+  const loose = db.routes.filter(r => !routeMkt(r) && !r.archived).sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  let h = `<header class="top"><span class="mark" aria-hidden="true"></span><div class="grow"><h1>PK Terrain</h1><p class="sub">${P.nom ? esc(P.nom) + (P.fonction ? ' · ' + esc(P.fonction) : '') : 'Chaînage GPS et constats par PK'}</p></div><button class="icon-btn" data-act="settings" aria-label="Réglages">${ICON.gear}</button></header>`;
   if (!window.isSecureContext && !S.sim) h += `<p class="alert warn">Appli ouverte hors https : le GPS sera bloqué. Mets-la en ligne ou active le mode test dans les réglages pour l’essayer.</p>`;
   const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
   if (isIOS && !navigator.standalone && window.isSecureContext) h += `<p class="alert info">Pour l’utiliser sans réseau : touche Partager, puis « Sur l’écran d’accueil ».</p>`;
-  if (undoFresh() && undo.deleted) h += undoBar('Itinéraire supprimé : « ' + (undo.data.name || '') + ' »');
+  if (Store.mode !== 'idb') h += `<p class="alert warn">Stockage limité dans ce navigateur : les photos sont désactivées. Ouvre l’appli depuis l’écran d’accueil ou dans Safari.</p>`;
+  if (undoFresh() && (undo.deleted || (undo.ref && !undo.routes.length))) h += undoBar('Dernière modification : ' + undo.label);
+  const hasData = db.routes.some(r => r.pts.length || r.obs.length);
+  if (hasData && (!db.lastBackup || daysAgo(db.lastBackup) >= 7)) h += `<div class="undo warnbar"><span>${db.lastBackup ? 'Dernière sauvegarde il y a ' + plural(daysAgo(db.lastBackup), 'jour', 'jours') + '.' : 'Aucune sauvegarde de tes données pour l’instant.'} Envoie-toi une copie par WhatsApp ou e-mail.</span><button class="btn ghost sm" data-act="backup" data-arg="1">Sauvegarder</button></div>`;
   if (live.mode && getRoute(live.routeId)) {
     const r = getRoute(live.routeId);
-    h += `<section class="card"><h3>${live.mode === 'rec' ? 'Enregistrement en cours' : 'Repérage en cours'}</h3><p>${esc(r.name)} · PK ${fmtPK(live.pk ?? lastPk(r))}</p><button class="btn red" data-act="open" data-arg="${r.id}">Revenir au terrain</button></section>`;
+    h += `<section class="card"><h3>${live.mode === 'rec' ? 'Enregistrement en cours' : 'Repérage en cours'}</h3><p>${esc(routeTitle(r))} · PK ${fmtPK(live.pk ?? lastPk(r))}</p><button class="btn red" data-act="open" data-arg="${r.id}">Revenir au terrain</button></section>`;
   } else if (db.active && getRoute(db.active.routeId)) {
     const r = getRoute(db.active.routeId);
-    h += `<section class="card"><h3>Enregistrement interrompu</h3><p>« ${esc(r.name)} » s’est arrêté au PK ${fmtPK(lastPk(r))}. Reprends depuis ce point, ou clos l’itinéraire.</p><div class="grid2"><button class="btn red" data-act="resume" data-arg="${r.id}">Reprendre</button><button class="btn ghost" data-act="dismissActive">Clore</button></div></section>`;
+    h += `<section class="card"><h3>Enregistrement interrompu</h3><p>« ${esc(routeTitle(r))} » s’est arrêté au PK ${fmtPK(lastPk(r))}. Reprends depuis ce point, ou clos l’itinéraire.</p><div class="grid2"><button class="btn red" data-act="resume" data-arg="${r.id}">Reprendre</button><button class="btn ghost" data-act="dismissActive">Clore</button></div></section>`;
   }
-  h += `<button class="btn" data-act="newRoute">${ICON.plus}Nouvel itinéraire</button>`;
-  if (!routes.length) {
-    h += `<section class="card"><h3>Comment ça marche</h3><ol class="steps">
-      <li><div><b>Place-toi au PK de départ</b><span>Crée l’itinéraire, indique le PK du point où tu te trouves (0+000 par défaut) et démarre.</span></div></li>
-      <li><div><b>Avance sur l’itinéraire</b><span>Le GPS additionne la distance parcourue : la borne à l’écran affiche ton PK en direct.</span></div></li>
-      <li><div><b>Arrête-toi et note</b><span>« Constat » enregistre un défaut au PK où tu es, avec ses coordonnées. « Contrôle borne » compare le PK GPS au PK inscrit.</span></div></li>
-      <li><div><b>Reviens plus tard</b><span>« Se repérer » te donne ton PK sur le tracé déjà enregistré, d’où que tu arrives.</span></div></li>
-      <li><div><b>Corrige après coup</b><span>Ajoute, modifie ou supprime des constats et des bornes à n’importe quel PK. Coupe, raccourcis ou recale le tracé.</span></div></li>
-    </ol></section>`;
+  if (!P.nom) h += `<section class="card"><h3>Ton profil</h3><p>Ton nom et ta fonction figureront sur les fiches et les rapports.</p><button class="btn ghost" data-act="profile">Compléter mon profil</button></section>`;
+  if (!companies.length) {
+    h += `<section class="card"><h3>Tes entreprises</h3><p>Importe le paquet mission reçu (fichier .json) : il contient les entreprises, les marchés, les itinéraires et les bordereaux. Tu peux aussi ajouter une entreprise à la main.</p><div class="grid2"><button class="btn" data-act="import">${ICON.file}Importer</button><button class="btn ghost" data-act="newCompany">${ICON.plus}Entreprise</button></div></section>`;
   } else {
-    h += `<h3 class="h3">Itinéraires</h3><ul class="rlist">${routes.map(r => {
-      const n = r.obs.filter(o => o.kind === 'obs').length, b = r.obs.length - n, L = pathLen(r);
-      return `<li><button class="rcard" data-act="open" data-arg="${r.id}"><span class="mini" aria-hidden="true"><i></i><b>${L >= 1000 ? nf1.format(L / 1000) : nf0.format(L)}</b><small>${L >= 1000 ? 'km' : 'm'}</small></span><span><span class="t">${esc(r.name)}</span><br><span class="m">PK ${fmtPK(firstPk(r))} → ${fmtPK(lastPk(r))}</span><br><span class="m">${plural(n, 'constat', 'constats')} · ${plural(b, 'borne', 'bornes')} · ${fmtDate(r.updated || r.created)}</span></span>${ICON.next}</button></li>`;
-    }).join('')}</ul>`;
+    h += `<h3 class="h3">Mes entreprises</h3><ul class="rlist">${companies.map(c => `<li><button class="rcard" data-act="company" data-arg="${c.id}"><span class="cmark" aria-hidden="true"><i></i><b>${esc(initials(compName(c)))}</b></span><span><span class="t">${esc(compName(c))}</span><br><span class="m">${esc(companyCounts(c))}</span></span>${ICON.next}</button></li>`).join('')}</ul>`;
+    h += `<div class="grid2"><button class="btn ghost" data-act="newCompany">${ICON.plus}Entreprise</button><button class="btn ghost" data-act="newRoute">${ICON.rec}Enregistrer</button></div>`;
   }
+  if (loose.length) {
+    h += `<h3 class="h3">Itinéraires à classer</h3><p class="note">Ces tracés ne sont rattachés à aucun marché. Classe-les pour les retrouver sous leur entreprise.</p><ul class="rlist">${loose.map(r => routeCard(r, true)).join('')}</ul>`;
+  }
+  if (!companies.length && !loose.length) {
+    h += `<button class="btn ghost" data-act="newRoute">${ICON.rec}Enregistrer un itinéraire sans entreprise</button>`;
+    h += `<section class="card"><h3>Comment ça marche</h3><ol class="steps">
+      <li><div><b>Range tes entreprises</b><span>Entreprises, marchés et itinéraires, tous renommables à tout moment.</span></div></li>
+      <li><div><b>Place-toi au PK de départ</b><span>Ouvre l’itinéraire, indique le PK du point où tu te trouves et démarre l’enregistrement.</span></div></li>
+      <li><div><b>Avance et note</b><span>La borne affiche ton PK en direct. « Constat » et « Contrôle borne » enregistrent un défaut ou un écart au PK où tu es, avec photos.</span></div></li>
+      <li><div><b>Reviens plus tard</b><span>« Se repérer » te donne ton PK sur le tracé déjà enregistré, d’où que tu arrives.</span></div></li>
+      <li><div><b>Corrige après coup</b><span>Ajoute, modifie ou supprime constats, bornes et ouvrages à n’importe quel PK. Coupe ou recale le tracé.</span></div></li>
+    </ol></section>`;
+  }
+  return h;
+}
+function routeCard(r, classify) {
+  const n = r.obs.filter(o => o.kind === 'obs').length, b = r.obs.length - n, L = pathLen(r);
+  const card = `<button class="rcard" data-act="open" data-arg="${r.id}"><span class="mini" aria-hidden="true"><i></i><b>${L >= 1000 ? nf1.format(L / 1000) : nf0.format(L)}</b><small>${L >= 1000 ? 'km' : 'm'}</small></span><span><span class="t">${esc(routeTitle(r))}</span><br><span class="m">PK ${fmtPK(firstPk(r))} → ${fmtPK(lastPk(r))}</span><br><span class="m">${plural(n, 'constat', 'constats')} · ${plural(b, 'borne', 'bornes')} · ${fmtDate(r.updated || r.created)}</span></span>${ICON.next}</button>`;
+  return classify ? `<li class="cls"><div>${card}</div><button class="btn ghost sm" data-act="attach" data-arg="${r.id}">Classer</button></li>` : `<li>${card}</li>`;
+}
+
+function companyHTML(c) {
+  const ms = mktsOf(c), act = ms.filter(m => !m.archived), arch = ms.filter(m => m.archived);
+  let h = topBar('home', '', `<h2>${esc(compName(c))}</h2>`, c.sigle && c.nom && c.nom !== c.sigle ? esc(c.nom) : '', `<button class="icon-btn" data-act="editCompany" data-arg="${c.id}" aria-label="Modifier l’entreprise">${ICON.edit}</button>`);
+  if (undoFresh() && undo.ref && !undo.routes.length) h += undoBar('Dernière modification : ' + undo.label);
+  if (!act.length) h += `<section class="card"><h3>Aucun marché</h3><p>Ajoute le marché de cette entreprise : lot, numéro, délai, puis ses itinéraires.</p></section>`;
+  for (const m of act) {
+    const rs = routesOf(m).filter(r => !r.archived), np = postesOf(m).length;
+    const facts = [['N° du marché', m.numero], ['Délai', m.delaiJours ? plural(m.delaiJours, 'jour', 'jours') : ''], ['OS de démarrage', m.dateOS ? fmtDay(m.dateOS) : ''], ['Montant HT', m.montant ? fmtMoney(m.montant) : ''], ['Linéaire', m.lineaireKm ? fmtKm(m.lineaireKm) : '']].filter(x => x[1]);
+    h += `<section class="mcard"><div class="mhead"><div class="grow"><p class="eyebrow">${esc(m.lot ? 'Lot ' + m.lot : 'Marché')}${m.departements ? ' · ' + esc(m.departements) : ''}</p><h3>${esc(m.intitule || 'Marché sans intitulé')}</h3></div><button class="icon-btn" data-act="editMarket" data-arg="${m.id}" aria-label="Modifier le marché">${ICON.edit}</button></div>`;
+    if (facts.length) h += `<dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
+    if (!m.dateOS) h += `<p class="hint">Date de l’OS de démarrage à renseigner : elle servira au calcul du délai consommé.</p>`;
+    h += rs.length ? `<ul class="ilist">${rs.map(r => itiRow(r)).join('')}</ul>` : `<p class="note">Aucun itinéraire pour ce marché.</p>`;
+    h += `<div class="grid2"><button class="btn ghost" data-act="newIti" data-arg="${m.id}">${ICON.plus}Itinéraire</button><button class="btn ghost" data-act="bordereau" data-arg="${m.id}">Bordereau · ${np}</button></div></section>`;
+  }
+  h += `<button class="btn ghost" data-act="newMarket" data-arg="${c.id}">${ICON.plus}Marché</button>`;
+  const ct = [['Responsable de chantier', [c.resp, c.tel].filter(Boolean).join(' · ')], ['HSE', c.hse], ['E-mail', c.email]].filter(x => x[1]);
+  if (ct.length) h += `<section class="card"><h3>Contacts</h3><dl class="facts one">${ct.map(([k, v]) => `<div><dt>${k}</dt><dd class="sel">${esc(v)}</dd></div>`).join('')}</dl></section>`;
+  if (arch.length) h += `<h3 class="h3">Marchés archivés</h3><ul class="ilist">${arch.map(m => `<li><button class="irow" data-act="editMarket" data-arg="${m.id}"><span class="icode">${esc(m.lot || '—')}</span><span><b>${esc(m.intitule || 'Marché')}</b><small>Archivé · touche pour le restaurer</small></span>${ICON.next}</button></li>`).join('')}</ul>`;
+  return h;
+}
+function itiRow(r) {
+  const L = pathLen(r) / 1000, n = r.obs.filter(o => o.kind === 'obs').length, nb = ouvsOf(r).length;
+  const meta = [r.pts.length >= 2 ? (r.longueurKm ? nf1.format(L) + ' / ' + nf1.format(r.longueurKm) + ' km enregistrés' : fmtKm(L) + ' enregistrés') : (r.longueurKm ? fmtKm(r.longueurKm) + ' prévus · pas encore de tracé' : 'Pas encore de tracé'), n ? plural(n, 'constat', 'constats') : '', nb ? plural(nb, 'ouvrage', 'ouvrages') : ''].filter(Boolean).join(' · ');
+  return `<li><button class="irow" data-act="open" data-arg="${r.id}"><span class="icode">${esc(r.code || '—')}</span><span><b>${esc(r.name)}</b><small>${esc(meta)}</small></span>${ICON.next}</button></li>`;
+}
+
+const seriesOf = p => { if (p.serie != null) return p.serie; const n = parseInt(p.num, 10); return !isFinite(n) || n < 100 ? 0 : Math.floor(n / 100) * 100; };
+const SERIES = { 0: 'Installation de chantier', 100: 'Dégagement des emprises', 200: 'Terrassements généraux', 300: 'Chaussée', 400: 'Assainissement et drainage', 500: 'Autres ouvrages hydrauliques', 600: 'Signalisation', 700: 'Environnement' };
+function bordereauHTML(m) {
+  const c = comp(m.companyId), trk = p => !p.tranche ? 0 : /ferme/i.test(p.tranche) ? 1 : 2, ps = postesOf(m).slice().sort((a, b) => trk(a) - trk(b) || String(a.tranche || '').localeCompare(String(b.tranche || ''), 'fr', { numeric: true }) || seriesOf(a) - seriesOf(b) || (a.ord ?? 1e9) - (b.ord ?? 1e9) || String(a.num).localeCompare(String(b.num), 'fr', { numeric: true }));
+  const total = ps.reduce((s, p) => s + (p.qty || 0) * (p.pu || 0), 0);
+  let h = topBar('company', m.companyId, `<h2>Bordereau</h2>`, esc(compName(c) + ' · ' + mktLabel(m)));
+  if (undoFresh() && undo.ref && !undo.routes.length) h += undoBar('Dernière modification : ' + undo.label);
+  h += `<dl class="stats"><div class="stat"><dt>Postes</dt><dd>${ps.length}</dd></div><div class="stat"><dt>Montant HT</dt><dd>${total ? nf0.format(total) : '—'}</dd></div></dl>`;
+  if (!ps.length) h += `<section class="card"><h3>Bordereau vide</h3><p>Ajoute les postes du DQE : n° de prix, désignation, unité, quantité et prix unitaire. Ils serviront au suivi des quantités et de l’avancement.</p></section>`;
+  let cur = null;
+  const groups = [];
+  for (const p of ps) { const k = (p.tranche ? p.tranche + ' · ' : '') + (SERIES[seriesOf(p)] || 'Série ' + seriesOf(p)); if (k !== cur) { groups.push({ k, items: [] }); cur = k; } groups[groups.length - 1].items.push(p); }
+  for (const g of groups) {
+    const st = g.items.reduce((s, p) => s + (p.qty || 0) * (p.pu || 0), 0);
+    h += `<h3 class="h3">${esc(g.k)}${st ? ' · ' + nf0.format(st) : ''}</h3><ul class="ilist">${g.items.map(p => `<li><button class="irow" data-act="editPoste" data-arg="${p.id}"><span class="icode">${esc(p.num || '—')}</span><span><b>${esc(p.des || 'Poste')}</b><small>${esc([p.qty != null ? nfq.format(p.qty) + ' ' + (p.unit || '') : '', p.pu != null ? '× ' + nf0.format(p.pu) : '', p.qty != null && p.pu != null ? '= ' + nf0.format(p.qty * p.pu) : ''].filter(Boolean).join(' '))}</small></span>${ICON.next}</button></li>`).join('')}</ul>`;
+  }
+  h += `<button class="btn ghost" data-act="newPoste" data-arg="${m.id}">${ICON.plus}Poste</button>`;
   return h;
 }
 
 const routeSub = r => 'PK ' + fmtPK(firstPk(r)) + ' → ' + fmtPK(lastPk(r)) + ' · ' + fmtDist(pathLen(r));
 function routeHTML(r) {
-  const tabs = [['terrain', 'Terrain'], ['obs', 'Constats'], ['table', 'Tableau PK'], ['files', 'Fichiers']];
-  let h = `<header class="top"><button class="icon-btn" data-act="home" aria-label="Retour aux itinéraires">${ICON.back}</button><div class="grow"><h2>${esc(r.name)}</h2><p class="sub" id="route-sub">${routeSub(r)}</p></div></header>`;
+  const tabs = [['terrain', 'Terrain'], ['obs', 'Constats'], ['ouv', 'Ouvrages'], ['table', 'PK'], ['more', 'Plus']];
+  const c = routeComp(r), m = routeMkt(r);
+  const eyebrow = c ? `<p class="eyebrow">${esc(compName(c))}${m && m.lot ? ' · Lot ' + esc(m.lot) : ''}</p>` : '';
+  let h = topBar(c ? 'company' : 'home', c ? c.id : '', `${eyebrow}<h2>${esc(routeTitle(r))}</h2>`, `<span id="route-sub">${routeSub(r)}</span>`);
   h += `<nav class="tabs" role="tablist">${tabs.map(([k, l]) => `<button class="tab" role="tab" aria-selected="${ui.tab === k}" data-act="tab" data-arg="${k}">${l}</button>`).join('')}</nav>`;
-  if (undoFresh() && !undo.deleted && undo.routeId === r.id && !(undo.scope === 'route' && recording(r))) h += undoBar('Dernière modification : ' + undo.label);
+  if (undoFresh() && !undo.deleted && (undo.obsOnly ? undo.routes[0].id === r.id : undoTouches(r.id) || (undo.ref && ui.tab === 'ouv')) && !(!undo.obsOnly && undoTouches(r.id) && recording(r))) h += undoBar('Dernière modification : ' + undo.label);
   if (ui.tab === 'terrain') h += terrainHTML(r);
   else if (ui.tab === 'obs') h += obsHTML(r);
+  else if (ui.tab === 'ouv') h += ouvHTML(r);
   else if (ui.tab === 'table') h += tableHTML(r);
-  else h += filesHTML(r);
+  else h += moreHTML(r);
   return h;
 }
 
@@ -815,13 +1128,13 @@ function terrainHTML(r) {
     const nObs = r.obs.filter(o => o.kind === 'obs').length;
     h += `<dl class="stats">
       <div class="stat"><dt>Longueur</dt><dd>${fmtDist(pathLen(r))}</dd></div>
-      <div class="stat"><dt>Points GPS</dt><dd>${nf0.format(n)}</dd></div>
+      <div class="stat"><dt>${r.longueurKm ? 'Prévu' : 'Points GPS'}</dt><dd>${r.longueurKm ? fmtKm(r.longueurKm) : nf0.format(n)}</dd></div>
       <div class="stat"><dt>Constats</dt><dd>${nObs}</dd></div>
-      <div class="stat"><dt>Bornes</dt><dd>${r.obs.length - nObs}</dd></div></dl>`;
+      <div class="stat"><dt>Ouvrages</dt><dd>${ouvsOf(r).length}</dd></div></dl>`;
     if (live.mode) h += `<p class="alert info">Une autre session est en cours. La démarrer ici arrêtera la précédente.</p>`;
     h += n >= 2
       ? `<div class="grid2"><button class="btn span2" data-act="loc">${ICON.pin}Se repérer sur l’itinéraire</button><button class="btn ghost span2" data-act="rec">Continuer l’enregistrement depuis PK ${fmtPK(lastPk(r))}</button></div>`
-      : `<button class="btn red" data-act="rec">${ICON.rec}Démarrer au PK ${fmtPK(lastPk(r))}</button>`;
+      : `<button class="btn red" data-act="rec">${ICON.rec}Démarrer au PK ${fmtPK(lastPk(r))}</button>${!n ? '<p class="note">Place-toi au début de l’itinéraire avant de démarrer. Le PK de départ se change dans l’onglet « Plus ».</p>' : ''}`;
     h += `<div class="sketch"><div id="sketch">${sketchSVG(r)}</div>${n >= 2 ? LEGEND : ''}</div>`;
     if (n >= 2) h += `<button class="btn ghost" data-act="trackEdit">${ICON.edit}Corriger le tracé</button><p class="note">Couper le début ou la fin, supprimer un détour, changer le PK de départ ou inverser le sens du chaînage.</p>`;
   }
@@ -872,25 +1185,33 @@ function updateLive() {
   const ah = al.map(([c, t]) => `<p class="alert ${c}">${esc(t)}</p>`).join(''), ae = $('#alerts');
   if (ae._h !== ah) { ae.innerHTML = ah; ae._h = ah; }
   const bp = $('#b-pause'); if (bp) bp.textContent = live.paused ? 'Reprendre' : 'Pause';
-  const nr = $('#near'); if (nr) { const nh = live.pk != null ? nearHTML(r, live.pk) : ''; if (nr._h !== nh) { nr.innerHTML = nh; nr._h = nh; } }
+  const nr = $('#near'); if (nr) { const nh = live.pk != null ? nearHTML(r, live.pk) : ''; if (nr._h !== nh) { nr.innerHTML = nh; nr._h = nh; hydratePhotos(nr); } }
   if (Date.now() - live.lastSketch > 2500) { $('#sketch').innerHTML = sketchSVG(r, { here: liveHere(r) }); $('#route-sub').textContent = routeSub(r); live.lastSketch = Date.now(); }
 }
 
+const phCount = o => o.photos && o.photos.length ? plural(o.photos.length, 'photo', 'photos') : '';
 function obsRow(o, delta) {
   const d = delta != null ? `<small>${fmtSigned(delta)}</small>` : '';
   const manual = o.src === 'manuel' ? 'saisi après coup' : '';
   const nopos = hasPos(o) ? '' : 'sans coordonnées';
+  const th = o.photos && o.photos.length ? `<span class="othumb"><img data-photo="${o.photos[0]}" alt=""></span>` : '';
   if (o.kind === 'borne') {
-    const meta = ['PK GPS ' + fmtPK(o.pk), o.recale ? 'chaînage recalé ici' : '', manual, nopos].filter(Boolean).join(' · ');
-    return `<button class="orow" data-act="editObs" data-arg="${o.id}"><span class="opk">${fmtPK(o.pkB)}${d}</span><span><span class="otop"><span class="otype">Borne</span><span class="pill ${ecCls(o.ec)}">Écart ${fmtSigned(o.ec)}</span></span><span class="ometa">${esc(meta)}</span>${o.note ? `<span class="onote">${esc(o.note)}</span>` : ''}</span></button>`;
+    const meta = ['PK GPS ' + fmtPK(o.pk), o.recale ? 'chaînage recalé ici' : '', manual, nopos, phCount(o)].filter(Boolean).join(' · ');
+    return `<button class="orow" data-act="editObs" data-arg="${o.id}"><span class="opk">${fmtPK(o.pkB)}${d}</span><span><span class="otop"><span class="otype">Borne</span><span class="pill ${ecCls(o.ec)}">Écart ${fmtSigned(o.ec)}</span></span><span class="ometa">${esc(meta)}</span>${o.note ? `<span class="onote">${esc(o.note)}</span>` : ''}</span>${th}</button>`;
   }
-  const meta = [COTES[o.cote] || '', o.len ? 'sur ' + nf0.format(o.len) + ' m' : '', manual, nopos].filter(Boolean).join(' · ');
-  return `<button class="orow" data-act="editObs" data-arg="${o.id}"><span class="opk">${fmtPK(o.pk)}${d}</span><span><span class="otop"><span class="otype">${esc(o.type)}</span><span class="pill ${GCLS[o.grav]}">${GRAV[o.grav]}</span></span><span class="ometa">${esc(meta)}</span>${o.note ? `<span class="onote">${esc(o.note)}</span>` : ''}</span></button>`;
+  const meta = [COTES[o.cote] || '', o.len ? 'sur ' + nf0.format(o.len) + ' m' : '', manual, nopos, phCount(o)].filter(Boolean).join(' · ');
+  return `<button class="orow" data-act="editObs" data-arg="${o.id}"><span class="opk">${fmtPK(o.pk)}${d}</span><span><span class="otop"><span class="otype">${esc(o.type)}</span><span class="pill ${GCLS[o.grav]}">${GRAV[o.grav]}</span></span><span class="ometa">${esc(meta)}</span>${o.note ? `<span class="onote">${esc(o.note)}</span>` : ''}</span>${th}</button>`;
+}
+function ouvRow(s, delta) {
+  const d = delta != null ? `<small>${fmtSigned(delta)}</small>` : '';
+  const meta = [s.dims, s.travaux, hasPos(s) ? '' : 'sans coordonnées'].filter(Boolean).join(' · ');
+  return `<button class="orow" data-act="editOuv" data-arg="${s.id}"><span class="opk">${s.pk != null ? fmtPK(s.pk) : '—'}${d}</span><span><span class="otop"><span class="otype">${esc(s.code ? s.code + ' · ' : '')}${esc(s.type || 'Ouvrage')}</span><span class="pill ${OECLS[s.etat] || 'neu'}">${OETAT[s.etat] || 'Prévu'}</span></span><span class="ometa">${esc(meta)}</span>${s.note ? `<span class="onote">${esc(s.note)}</span>` : ''}</span></button>`;
 }
 function nearHTML(r, pk) {
-  const list = r.obs.map(o => ({ o, d: obsPk(o) - pk })).filter(x => Math.abs(x.d) <= 300).sort((a, b) => Math.abs(a.d) - Math.abs(b.d)).slice(0, 4);
+  const list = r.obs.map(o => ({ o, d: obsPk(o) - pk, k: 'o' })).concat(ouvsOf(r).filter(s => s.pk != null).map(s => ({ o: s, d: s.pk - pk, k: 's' })))
+    .filter(x => Math.abs(x.d) <= 300).sort((a, b) => Math.abs(a.d) - Math.abs(b.d)).slice(0, 5);
   if (!list.length) return '';
-  return `<h3 class="h3">À moins de 300 m</h3><ul class="olist">${list.map(x => `<li>${obsRow(x.o, x.d)}</li>`).join('')}</ul>`;
+  return `<h3 class="h3">À moins de 300 m</h3><ul class="olist">${list.map(x => `<li>${x.k === 's' ? ouvRow(x.o, x.d) : obsRow(x.o, x.d)}</li>`).join('')}</ul>`;
 }
 
 function obsHTML(r) {
@@ -905,6 +1226,15 @@ function obsHTML(r) {
   h += `<ul class="olist">${list.map(o => `<li>${obsRow(o)}</li>`).join('')}</ul>`;
   h += `<p class="note">Touche une ligne pour la modifier ou la supprimer.</p>`;
   h += `<button class="btn ghost" data-act="export" data-arg="obs">${ICON.share}Partager les constats (CSV)</button>`;
+  return h;
+}
+function ouvHTML(r) {
+  const list = ouvsOf(r);
+  const add = `<button class="btn ghost" data-act="addOuv">${ICON.plus}Ouvrage</button>`;
+  if (!list.length) return `<section class="card"><h3>Aucun ouvrage</h3><p>Ajoute les buses, dalots, radiers et points de coupure de cet itinéraire, avec leur PK. Ils apparaîtront sur le croquis et pendant le repérage, à l’approche.</p>${add}</section>`;
+  const cnt = k => list.filter(s => (s.etat || 'prevu') === k).length;
+  let h = add + `<div class="summary">${Object.entries(OETAT).map(([k, v]) => cnt(k) ? `<span class="pill ${OECLS[k]}">${cnt(k)} ${v.toLowerCase()}${cnt(k) > 1 && k !== 'cours' ? 's' : ''}</span>` : '').join('')}</div>`;
+  h += `<ul class="olist">${list.map(s => `<li>${ouvRow(s)}</li>`).join('')}</ul><p class="note">Touche une ligne pour la modifier ou la supprimer.</p>`;
   return h;
 }
 
@@ -926,16 +1256,19 @@ function tableHTML(r) {
   return h;
 }
 
-function filesHTML(r) {
+function moreHTML(r) {
+  const c = routeComp(r), m = routeMkt(r);
+  const facts = [['Entreprise', c ? compName(c) : 'Non classé'], ['Marché', m ? mktLabel(m) : '—'], ['Code', r.code || '—'], ['Nom', r.name], ['Longueur prévue', r.longueurKm ? fmtKm(r.longueurKm) : '—'], ['Travaux', r.type || '—'], ['PK de départ', fmtPK(firstPk(r))]];
   const x = (arg, t, d) => `<button class="xbtn" data-act="export" data-arg="${arg}"><b>${t}</b><span>${d}</span>${ICON.share}</button>`;
-  return `<div class="xlist">
+  return `<section class="card"><h3>Itinéraire</h3><dl class="facts one">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><button class="btn ghost" data-act="editIti" data-arg="${r.id}">${ICON.edit}Modifier l’itinéraire</button></section>
+  <h3 class="h3">Fichiers</h3>
+  <div class="xlist">
     ${x('obs', 'Constats et bornes · CSV', 'Triés par PK, avec coordonnées GPS et UTM. S’ouvre dans Excel.')}
-    ${x('table', 'Tableau des PK · CSV', 'Coordonnées tous les ' + ui.step + ' m (intervalle choisi dans « Tableau PK »).')}
-    ${x('kml', 'Tracé et constats · KML', 'Axe, repères PK et constats, à ouvrir dans Google Earth ou QGIS.')}
-    ${x('json', 'Sauvegarde de l’itinéraire · JSON', 'Pour le garder en lieu sûr ou le passer sur un autre téléphone.')}
+    ${x('ouv', 'Ouvrages · CSV', 'Liste des ouvrages avec PK, type, dimensions, état et coordonnées.')}
+    ${x('table', 'Tableau des PK · CSV', 'Coordonnées tous les ' + ui.step + ' m (intervalle choisi dans l’onglet « PK »).')}
+    ${x('kml', 'Tracé et constats · KML', 'Axe, repères PK, constats et ouvrages, à ouvrir dans Google Earth ou QGIS.')}
   </div>
-  <h3 class="h3">Itinéraire</h3>
-  <div class="grid2"><button class="btn ghost" data-act="rename">Renommer</button><button class="btn danger" data-act="delRoute">Supprimer</button></div>`;
+  <button class="btn danger" data-act="delRoute">Supprimer l’itinéraire</button>`;
 }
 
 function toast(text, cls, action) {
@@ -952,7 +1285,8 @@ function openSheet(html) {
   pickFrame = null;
   $('#sheet-body').innerHTML = html; $('#sheet').hidden = false;
   const ps = $('#pick-svg'); if (ps) ps.addEventListener('click', onPick);
-  const f = $('#sheet-body').querySelector('input[type=text]'); if (f && !f.value) setTimeout(() => f.focus(), 50);
+  hydratePhotos($('#sheet-body'));
+  const f = $('#sheet-body').querySelector('input[type=text][data-focus]'); if (f && !f.value) setTimeout(() => f.focus(), 50);
 }
 function closeSheet() { $('#sheet').hidden = true; $('#sheet-body').innerHTML = ''; ui.form = null; pickFrame = null; }
 const head = t => `<div class="sh-head"><h2>${t}</h2><button class="icon-btn" data-act="closeSheet" aria-label="Fermer">${ICON.close}</button></div>`;
@@ -961,6 +1295,9 @@ function pkInput(p, m) {
   return `<div class="pkin"><span aria-hidden="true">PK</span><input id="${p}-km" type="number" inputmode="numeric" min="0" step="1" value="${km}" aria-label="Kilomètres"><span aria-hidden="true">+</span><input id="${p}-m" type="number" inputmode="numeric" min="0" max="999" step="1" value="${String(r).padStart(3, '0')}" aria-label="Mètres"></div>`;
 }
 const fieldPK = (p, label, val, hint, hintId) => `<div class="field"><span class="lbl">${label}</span>${pkInput(p, val)}${hint != null ? `<span class="hint"${hintId ? ` id="${hintId}"` : ''}>${hint}</span>` : ''}</div>`;
+const fieldText = (id, label, val, ph, opts) => `<div class="field"><label class="lbl" for="${id}">${label}</label><input id="${id}" type="${(opts && opts.type) || 'text'}"${opts && opts.mode ? ` inputmode="${opts.mode}"` : ''}${opts && opts.focus ? ' data-focus="1"' : ''} autocomplete="off" value="${esc(val ?? '')}" placeholder="${esc(ph || '')}"></div>`;
+const fieldArea = (id, label, val, ph, rows) => `<div class="field"><label class="lbl" for="${id}">${label}</label><textarea id="${id}" rows="${rows || 3}" placeholder="${esc(ph || '')}">${esc(val ?? '')}</textarea></div>`;
+const val = id => { const el = $('#' + id); return el ? el.value.trim() : ''; };
 function readPK(p) {
   const km = parseInt($('#' + p + '-km').value, 10) || 0;
   const m = Math.min(999, Math.max(0, parseFloat(String($('#' + p + '-m').value).replace(',', '.')) || 0));
@@ -983,18 +1320,135 @@ function posLine(r, pk) {
 function setHint(id, v) { const el = $('#' + id); if (!el) return; el.textContent = v.t; el.classList.toggle('warn', !!v.warn); }
 const pickBlock = (r, hint) => r.pts.length < 2 ? '' : `<div class="sketch pick"><div id="pick-svg"></div><p class="pick-hint" id="pick-hint">${hint || 'Touche le croquis pour placer le PK.'}</p></div>`;
 const defaultPk = r => ui.lastPk[r.id] ?? (r.pts.length ? Math.round(r.pts[0][PK]) : r.pkStart);
+function marketSelect(id, cur) {
+  const cs = db.ref.companies.filter(c => !c.archived);
+  const opts = cs.map(c => { const ms = mktsOf(c).filter(m => !m.archived || m.id === cur); return ms.length ? `<optgroup label="${esc(compName(c))}">${ms.map(m => `<option value="${m.id}"${m.id === cur ? ' selected' : ''}>${esc(mktLabel(m))}</option>`).join('')}</optgroup>` : ''; }).join('');
+  return `<div class="field"><label class="lbl" for="${id}">Entreprise et marché</label><select id="${id}"><option value="">Non classé</option>${opts}</select></div>`;
+}
 
-function newRouteSheet() {
-  return head('Nouvel itinéraire') + `
-  <div class="field"><label class="lbl" for="n-name">Nom de l’itinéraire</label><input id="n-name" type="text" autocomplete="off" placeholder="Ex. Lot 1 – tronçon A"></div>
-  ${fieldPK('n', 'PK du point de départ', 0, 'Place-toi sur ce PK avant de démarrer : le premier point GPS précis prendra cette valeur.')}
-  <button class="btn red" data-act="startNew">${ICON.rec}Démarrer l’enregistrement</button>`;
+/* Photos dans une fiche */
+function photoField(F) {
+  if (!canPhoto()) return `<p class="hint">Photos indisponibles : le stockage de ce navigateur est limité.</p>`;
+  return `<div class="field" id="ph-field"><span class="lbl">Photos</span>${photoInner(F)}</div>`;
+}
+const photoInner = F => `<div class="thumbs">${F.photos.map(id => `<button class="thumb" data-act="viewPhoto" data-arg="${id}" aria-label="Voir la photo"><img data-photo="${id}" alt=""></button>`).join('')}</div>${F.photos.length < MAXPH ? `<label class="btn ghost" for="ph-in">${ICON.camera}${F.photos.length ? 'Ajouter une photo' : 'Prendre ou choisir une photo'}</label><input type="file" id="ph-in" accept="image/*" class="vh">` : `<span class="hint">${MAXPH} photos au plus par fiche.</span>`}`;
+function refreshPhotos() { const el = $('#ph-field'); if (el && ui.form) { el.innerHTML = `<span class="lbl">Photos</span>` + photoInner(ui.form); hydratePhotos(el); } }
+async function addPhoto(file) {
+  const F = ui.form; if (!F || !F.photos || !canPhoto()) return;
+  try {
+    toast('Photo en cours d’enregistrement…');
+    const { blob, w, h } = await compressImage(file);
+    const id = 'ph-' + uid(), f = live.fix;
+    await photoPut({ id, blob, w, h, t: Date.now(), lat: f ? f.lat : null, lon: f ? f.lon : null });
+    if (ui.form !== F) return;
+    F.photos.push(id); refreshPhotos(); toast('Photo ajoutée');
+  } catch (e) { toast('Impossible de lire cette photo. Essaie avec une autre.', 'bad'); }
+}
+async function viewPhoto(id) {
+  const u = await photoURL(id); if (!u) return toast('Photo introuvable.', 'warn');
+  const v = $('#viewer'), inForm = ui.form && ui.form.photos && ui.form.photos.includes(id);
+  v.innerHTML = `<img src="${u}" alt="Photo"><div class="vbar">${inForm ? `<button class="btn danger" data-act="unPhoto" data-arg="${id}">Retirer la photo</button>` : ''}<button class="btn ghost" data-act="closeViewer">Fermer</button></div>`;
+  v.hidden = false;
+}
+
+function profileSheet() {
+  const P = db.ref.profile || {}, M = db.ref.mission || {};
+  return head('Mon profil') + `
+  ${fieldText('p-nom', 'Nom et prénom', P.nom, 'Ex. OUEDRAOGO Sibiri Cheick Omar', { focus: true })}
+  ${fieldText('p-fct', 'Fonction', P.fonction, 'Ex. Contrôleur des travaux')}
+  ${fieldText('p-mis', 'Mission', M.nom || P.mission, 'Ex. Mission de contrôle Denguélé (PCR-CI)')}
+  ${fieldText('p-bur', 'Bureau', M.bureau || P.bureau, 'Ex. ACE Ingénieurs conseils')}
+  ${fieldText('p-cm', 'Chef de mission', M.chefMission || P.chefMission, '')}
+  <p class="hint">Ces informations restent dans ton téléphone. Elles figureront sur tes fiches et tes rapports.</p>
+  <button class="btn" data-act="saveProfile">Enregistrer</button>`;
+}
+function companySheet(c) {
+  ui.form = { kind: 'company', id: c ? c.id : null };
+  return head(c ? 'Modifier l’entreprise' : 'Nouvelle entreprise') + `
+  ${fieldText('c-sig', 'Nom court (affiché)', c && c.sigle, 'Ex. GITPS', { focus: !c })}
+  ${fieldText('c-nom', 'Raison sociale', c && c.nom, 'Ex. Générale d’Ingénierie des Travaux Publics et Services')}
+  ${fieldText('c-resp', 'Responsable de chantier', c && c.resp, 'Nom')}
+  ${fieldText('c-tel', 'Téléphone', c && c.tel, '', { type: 'tel' })}
+  ${fieldText('c-hse', 'Responsable HSE', c && c.hse, 'Nom et téléphone')}
+  ${fieldText('c-mail', 'E-mail', c && c.email, '', { type: 'email' })}
+  ${fieldArea('c-note', 'Note', c && c.note, '', 2)}
+  <div class="grid2">${c ? `<button class="btn ghost" data-act="archCompany" data-arg="${c.id}">${c.archived ? 'Restaurer' : 'Archiver'}</button>` : ''}<button class="btn ${c ? '' : 'span2'}" data-act="saveCompany">Enregistrer</button></div>
+  ${c ? '<p class="note">Archiver masque l’entreprise sans rien effacer.</p>' : ''}`;
+}
+function marketSheet(m, companyId) {
+  ui.form = { kind: 'market', id: m ? m.id : null, companyId: m ? m.companyId : companyId };
+  return head(m ? 'Modifier le marché' : 'Nouveau marché') + `
+  ${fieldText('m-int', 'Intitulé', m && m.intitule, 'Ex. Réhabilitation Phase 1 BIS Kabadougou', { focus: !m })}
+  <div class="grid2">${fieldText('m-lot', 'Lot', m && m.lot, 'Ex. 2')}${fieldText('m-dep', 'Département(s)', m && m.departements, 'Ex. Odienné')}</div>
+  ${fieldText('m-num', 'N° du marché', m && m.numero, 'Ex. 2025-0-00-00-2-1841/05-330')}
+  <div class="grid2">${fieldText('m-del', 'Délai (jours)', m && m.delaiJours, 'Ex. 210', { type: 'number', mode: 'numeric' })}${fieldText('m-lin', 'Linéaire (km)', m && m.lineaireKm != null ? String(m.lineaireKm).replace('.', ',') : '', 'Ex. 63,5', { mode: 'decimal' })}</div>
+  <div class="field"><label class="lbl" for="m-os">Date de l’OS de démarrage</label><input id="m-os" type="date" value="${esc(m && m.dateOS || '')}"></div>
+  ${fieldText('m-mnt', 'Montant HT (F CFA)', m && m.montant, 'Ex. 475991860', { type: 'number', mode: 'numeric' })}
+  ${fieldArea('m-note', 'Note', m && m.note, 'Ex. tranches, avenants', 2)}
+  <div class="grid2">${m ? `<button class="btn ghost" data-act="archMarket" data-arg="${m.id}">${m.archived ? 'Restaurer' : 'Archiver'}</button>` : ''}<button class="btn ${m ? '' : 'span2'}" data-act="saveMarket">Enregistrer</button></div>`;
+}
+/* Itinéraire : 'new' (sous un marché), 'rec' (créer et enregistrer), 'edit'. */
+function itinerarySheet(mode, r, marketId) {
+  ui.form = { kind: 'iti', mode, id: r ? r.id : null, type: r ? r.type || '' : (marketId && mkt(marketId) && /entretien/i.test(mkt(marketId).intitule || '') ? 'Entretien' : 'Réhabilitation') };
+  const canStart = !r || !r.pts.length;
+  return head(mode === 'edit' ? 'Modifier l’itinéraire' : mode === 'rec' ? 'Nouvel enregistrement' : 'Nouvel itinéraire') + `
+  ${marketSelect('i-mkt', r ? r.marketId || '' : marketId || '')}
+  <div class="grid2 code2">${fieldText('i-code', 'Code', r && r.code, 'Ex. T1')}${fieldText('i-len', 'Longueur prévue (km)', r && r.longueurKm != null ? String(r.longueurKm).replace('.', ',') : '', 'Ex. 15,9', { mode: 'decimal' })}</div>
+  ${fieldText('i-name', 'Nom de l’itinéraire', r && r.name, 'Ex. Odienné – Sienso – M’Bégbélé – Mahandouni', { focus: !r })}
+  <div class="field"><span class="lbl">Travaux</span><div class="chips">${ITYPES.map(t => chip('type', t, t, ui.form.type === t)).join('')}</div></div>
+  ${canStart ? fieldPK('n', 'PK du point de départ', r ? r.pkStart : 0, 'Place-toi sur ce PK avant de démarrer : le premier point GPS précis prendra cette valeur.') : '<p class="hint">Le PK de départ d’un tracé déjà enregistré se change avec « Corriger le tracé ».</p>'}
+  <button class="btn ${mode === 'rec' ? 'red' : ''}" data-act="saveIti">${mode === 'rec' ? ICON.rec + 'Démarrer l’enregistrement' : 'Enregistrer'}</button>`;
+}
+function attachSheet(r) {
+  const cand = db.routes.filter(x => x.id !== r.id && routeMkt(x) && !x.pts.length && !x.obs.length && !x.archived);
+  ui.form = { kind: 'attach', id: r.id };
+  let h = head('Classer l’itinéraire') + `<p class="sh-lead">« ${esc(routeTitle(r))} » · ${fmtDist(pathLen(r))} enregistrés, ${plural(r.obs.length, 'constat ou borne', 'constats ou bornes')}.</p>`;
+  if (cand.length) {
+    h += `<div class="field"><span class="lbl">C’est l’un de ces itinéraires prévus ?</span><div class="radios">${cand.map(x => { const c = routeComp(x), m = routeMkt(x); return `<label class="radio"><input type="radio" name="att" value="${x.id}"><span><b>${esc(compName(c))} · ${esc(x.code ? x.code + ' · ' : '')}${esc(x.name)}</b><small>${esc(mktLabel(m))}${x.longueurKm ? ' · ' + fmtKm(x.longueurKm) + ' prévus' : ''}</small></span></label>`; }).join('')}</div><span class="hint">L’itinéraire prévu prend le tracé, les constats et les bornes. Son nom et son code sont conservés.</span></div><button class="btn" data-act="doMerge">Fusionner</button><p class="or">ou</p>`;
+  }
+  h += marketSelect('a-mkt', r.marketId || '') + `<button class="btn ghost" data-act="doClassify">Ranger dans ce marché</button>`;
+  return h;
+}
+function ouvSheet(mode, s) {
+  const r = getRoute(ui.routeId);
+  ui.form = { kind: 'ouv', mode, id: s ? s.id : null, type: s ? s.type : null, travaux: s ? s.travaux : 'Neuf', etat: s ? s.etat || 'prevu' : 'prevu', pk0: s ? s.pk : null, pick: ['s'], pickT: 's' };
+  const F = ui.form, pk = s && s.pk != null ? s.pk : (isLiveOn(r) && live.pk != null ? live.pk : defaultPk(r));
+  return head(mode === 'edit' ? 'Modifier l’ouvrage' : 'Ajouter un ouvrage') + `
+  <div class="grid2 code2">${fieldText('s-code', 'Code', s && s.code, 'Ex. OH-03')}${fieldText('s-dims', 'Dimensions', s && s.dims, 'Ex. 1 × 2,00 × 2,00 ; 12 ml')}</div>
+  <div class="field"><span class="lbl">Type</span><div class="chips">${OTYPES.map(t => chip('type', t, t, F.type === t)).join('')}</div></div>
+  ${fieldPK('s', 'PK', pk, '', 's-pos')}
+  ${pickBlock(r, 'Touche le croquis à l’endroit de l’ouvrage.')}
+  <div class="field"><span class="lbl">Travaux</span><div class="chips">${OTRAV.map(t => chip('travaux', t, t, F.travaux === t)).join('')}</div></div>
+  <div class="field"><span class="lbl">État</span><div class="chips">${Object.entries(OETAT).map(([k, v]) => chip('etat', k, v, F.etat === k)).join('')}</div></div>
+  ${fieldArea('s-note', 'Note', s && s.note, 'Ex. exutoire aval à dégager', 2)}
+  <div class="grid2">${mode === 'edit' ? `<button class="btn danger" data-act="delOuv" data-arg="${s.id}">Supprimer</button>` : ''}<button class="btn ${mode === 'edit' ? '' : 'span2'}" data-act="saveOuv">Enregistrer</button></div>`;
+}
+function posteSheet(p, marketId) {
+  const m = mkt(p ? p.marketId : marketId);
+  ui.form = { kind: 'poste', id: p ? p.id : null, marketId: m.id };
+  const rs = routesOf(m);
+  return head(p ? 'Modifier le poste' : 'Nouveau poste') + `
+  <div class="grid2 code2">${fieldText('q-num', 'N° de prix', p && p.num, 'Ex. 301', { focus: !p })}${fieldText('q-unit', 'Unité', p && p.unit, 'Ex. m³')}</div>
+  ${fieldArea('q-des', 'Désignation', p && p.des, 'Ex. Couche de roulement en graveleux latéritique', 2)}
+  <div class="grid2">${fieldText('q-qty', 'Quantité du marché', p && p.qty != null ? String(p.qty).replace('.', ',') : '', '', { mode: 'decimal' })}${fieldText('q-pu', 'Prix unitaire (F CFA)', p && p.pu, '', { type: 'number', mode: 'numeric' })}</div>
+  ${fieldText('q-tr', 'Tranche', p && p.tranche, 'Ex. Tranche ferme (facultatif)')}
+  ${rs.length ? `<div class="field"><span class="lbl">Quantités prévues par itinéraire</span><div class="qiti">${rs.map(r => `<label><span>${esc(r.code || r.name)}</span><input id="qi-${r.id}" type="text" inputmode="decimal" value="${p && p.parIti && p.parIti[r.id] != null ? String(p.parIti[r.id]).replace('.', ',') : ''}" placeholder="—"></label>`).join('')}</div></div>` : ''}
+  <div class="grid2">${p ? `<button class="btn danger" data-act="delPoste" data-arg="${p.id}">Supprimer</button>` : ''}<button class="btn ${p ? '' : 'span2'}" data-act="savePoste">Enregistrer</button></div>`;
+}
+function paquetSheet(pq) {
+  ui.pending = pq;
+  const sug = pq.suggest || [], cs = (pq.companies || []).slice().sort((a, b) => (sug.includes(b.id) - sug.includes(a.id)) || String(a.sigle || a.nom).localeCompare(String(b.sigle || b.nom), 'fr'));
+  return head('Importer le paquet mission') + `
+  <p class="sh-lead">${esc(pq.mission && pq.mission.nom || 'Paquet mission')}${pq.created ? ' · préparé le ' + esc(fmtDay(pq.created)) : ''}</p>
+  <div class="field"><span class="lbl">Entreprises à importer dans ce téléphone</span><div class="radios">${cs.map(c => { const ms = (pq.markets || []).filter(m => m.companyId === c.id), ni = (pq.itineraries || []).filter(i => ms.some(m => m.id === i.marketId)).length; return `<label class="radio"><input type="checkbox" name="pq" value="${esc(c.id)}"${pq.suggest && pq.suggest.includes(c.id) ? ' checked' : ''}><span><b>${esc(c.sigle || c.nom)}</b><small>${esc(ms.map(m => mktLabel(m)).join(' ; '))} · ${plural(ni, 'itinéraire', 'itinéraires')}</small></span></label>`; }).join('')}</div>
+  <span class="hint">Coche seulement les entreprises que tu contrôles. Tes tracés, constats et photos ne sont jamais modifiés. Les noms que tu as corrigés depuis sont conservés.</span></div>
+  <button class="btn" data-act="applyPaquet">Importer</button>`;
 }
 
 /* Constat : mode 'live' (sur le terrain), 'new' (après coup) ou 'edit'. */
 function constatSheet(mode, o, snap) {
   const r = getRoute(ui.routeId);
-  ui.form = { kind: 'obs', mode, id: o ? o.id : null, type: o ? o.type : null, cote: o ? o.cote : 'A', grav: o ? o.grav : 2, snap, pk0: o ? o.pk : null, pick: mode === 'live' ? null : ['o'], pickT: 'o' };
+  ui.form = { kind: 'obs', mode, id: o ? o.id : null, type: o ? o.type : null, cote: o ? o.cote : 'A', grav: o ? o.grav : 2, snap, pk0: o ? o.pk : null, pick: mode === 'live' ? null : ['o'], pickT: 'o', photos: o ? [...(o.photos || [])] : [] };
   const F = ui.form, pk = o ? o.pk : snap ? snap.pk : defaultPk(r);
   const title = mode === 'edit' ? 'Modifier le constat' : mode === 'new' ? 'Ajouter un constat' : 'Nouveau constat';
   const hint = mode === 'live' ? coordLine(snap) : '';
@@ -1005,6 +1459,7 @@ function constatSheet(mode, o, snap) {
   <div class="field"><span class="lbl">Nature</span><div class="chips">${TYPES.map(t => chip('type', t, t, F.type === t)).join('')}</div></div>
   <div class="field"><span class="lbl">Côté</span><div class="chips">${Object.entries(COTES).map(([k, v]) => chip('cote', k, v, F.cote === k)).join('')}</div></div>
   <div class="field"><span class="lbl">Gravité</span><div class="chips">${Object.entries(GRAV).map(([k, v]) => chip('grav', k, v, F.grav == k)).join('')}</div></div>
+  ${photoField(F)}
   <div class="field"><label class="lbl" for="o-len">Longueur concernée (m)</label><input id="o-len" type="number" inputmode="decimal" min="0" placeholder="Facultatif" value="${o && o.len ? o.len : ''}"></div>
   <div class="field"><label class="lbl" for="o-note">Note</label><textarea id="o-note" rows="3" placeholder="Ex. eau stagnante sur 2 m de large, prévoir une purge">${esc(o ? o.note : '')}</textarea></div>
   <div class="grid2">${mode === 'edit' ? `<button class="btn danger" data-act="delObs" data-arg="${o.id}">Supprimer</button>` : ''}<button class="btn ${mode === 'edit' ? '' : 'span2'}" data-act="saveObs">Enregistrer</button></div>`;
@@ -1013,9 +1468,9 @@ function constatSheet(mode, o, snap) {
 /* Borne : mode 'live' (contrôle sur place), 'new' (après coup) ou 'edit'. */
 function borneSheet(mode, o, snap) {
   const r = getRoute(ui.routeId);
-  const locked = recording(r);                       // tracé en cours d'enregistrement : on ne touche pas aux recalages
+  const locked = recording(r);
   const posEdit = mode === 'new' || (mode === 'edit' && !(o.recale && locked));
-  ui.form = { kind: 'borne', mode, id: o ? o.id : null, snap, pick: posEdit && mode !== 'live' ? ['bp'] : null, pickT: 'bp', posEdit, locked };
+  ui.form = { kind: 'borne', mode, id: o ? o.id : null, snap, pick: posEdit && mode !== 'live' ? ['bp'] : null, pickT: 'bp', posEdit, locked, photos: o ? [...(o.photos || [])] : [] };
   const posPk = mode === 'live' ? snap.pk : o ? o.pk : defaultPk(r);
   const pkB = mode === 'live' ? Math.round(snap.pk / 100) * 100 : o ? o.pkB : Math.round(posPk / 100) * 100;
   const title = mode === 'edit' ? 'Modifier la borne' : mode === 'new' ? 'Ajouter une borne' : 'Contrôle de borne';
@@ -1027,6 +1482,7 @@ function borneSheet(mode, o, snap) {
     ? `<p class="sh-lead">PK inscrit : <strong>${fmtPK(o.pkB)}</strong></p><input type="hidden" id="b-km" value="${Math.floor(o.pkB / 1000)}"><input type="hidden" id="b-m" value="${Math.round(o.pkB) % 1000}">`
     : fieldPK('b', 'PK inscrit sur la borne', pkB);
   h += `<p class="ecart" id="b-ec"></p>`;
+  h += photoField(ui.form);
   h += `<div class="field"><label class="lbl" for="b-note">Note</label><textarea id="b-note" rows="2" placeholder="Facultatif. Ex. borne déplacée, peinture effacée">${esc(o ? o.note : '')}</textarea></div>`;
   const canCal = mode === 'live' ? live.mode === 'rec' : (!locked && r.pts.length >= 2);
   if (canCal) h += `<label class="check"><input type="checkbox" id="b-cal"${o && o.recale ? ' checked' : ''}><span>Recaler le chaînage sur cette borne<br><small>${mode === 'live' ? 'La suite de l’enregistrement repartira du PK de la borne. Les PK déjà enregistrés ne changent pas.' : 'Le tracé et les constats après la borne reprennent le PK inscrit, jusqu’à la borne recalée suivante.'}</small></span></label>`;
@@ -1080,28 +1536,34 @@ function trackPreview(r, F) {
   if (res.removed) L.push(plural(res.removed, 'constat ou borne supprimé', 'constats ou bornes supprimés') + ' avec la partie retirée');
   if (res.shifted) L.push(plural(res.shifted, 'constat ou borne décalé', 'constats ou bornes décalés'));
   if (F.op === 'reverse') { L.push('Constats replacés sur le tracé inversé'); if (r.obs.some(o => o.recale)) L.push('Les recalages sur bornes sont retirés : refais-les si besoin'); }
+  if (ouvsOf(r).length) L.push('Ouvrages : vérifie leur PK après la correction (onglet « Ouvrages »)');
   return `<ul class="prev">${L.map(l => `<li>${esc(l)}</li>`).join('')}</ul>`;
 }
 
-/* Met à jour les aperçus d'une feuille pendant la saisie. */
 function sheetSync() {
   const F = ui.form; if (!F) return;
-  const r = getRoute(ui.routeId); if (!r) return;
+  const r = getRoute(ui.routeId);
   const ps = $('#pick-svg'), ph = $('#pick-hint');
-  if (F.kind === 'obs') {
+  if (F.kind === 'obs' && r) {
     if (F.mode === 'live') return;
     const pk = readPK('o');
     const o = F.id ? r.obs.find(x => x.id === F.id) : null;
     if (o && Math.abs(pk - F.pk0) < 0.5) setHint('o-pos', { t: coordLine(o) });
     else { const v = posLine(r, pk); if (o && !v.warn) v.t += ' (déplacé)'; setHint('o-pos', v); }
     if (ps) ps.innerHTML = sketchSVG(r, { mark: pk, frame: true });
-  } else if (F.kind === 'borne') {
+  } else if (F.kind === 'borne' && r) {
     const pos = F.mode === 'live' ? F.snap.pk : F.posEdit ? readPK('bp') : r.obs.find(x => x.id === F.id).pk;
     const e = pos - readPK('b'), el = $('#b-ec');
     if (el) { el.textContent = 'Écart GPS − borne : ' + fmtSigned(e); el.className = 'ecart ' + ecCls(e); }
     if (F.posEdit && F.mode !== 'live') { const o = F.id ? r.obs.find(x => x.id === F.id) : null; setHint('bp-pos', o && Math.abs(pos - o.pk) < 0.5 ? { t: coordLine(o) } : posLine(r, pos)); }
     if (ps) ps.innerHTML = sketchSVG(r, { mark: pos, frame: true });
-  } else if (F.kind === 'track') {
+  } else if (F.kind === 'ouv' && r) {
+    const pk = readPK('s');
+    const s = F.id ? db.ref.structures.find(x => x.id === F.id) : null;
+    if (s && F.pk0 != null && Math.abs(pk - F.pk0) < 0.5 && hasPos(s)) setHint('s-pos', { t: coordLine(s) });
+    else setHint('s-pos', posLine(r, pk));
+    if (ps) ps.innerHTML = sketchSVG(r, { mark: pk, frame: true });
+  } else if (F.kind === 'track' && r) {
     $('#te-prev').innerHTML = trackPreview(r, F);
     $('#te-apply').disabled = !!F.res.error;
     const s = r.pts[0][PK], e = lastPk(r);
@@ -1128,11 +1590,23 @@ function settingsSheet() {
   const S = db.settings;
   const grp = (key, vals, unit) => `<div class="chips">${vals.map(v => `<button class="chip" data-act="set" data-arg="${key}:${v}" aria-pressed="${S[key] === v}">${unit ? '±' + v + ' ' + unit : v + ' m'}</button>`).join('')}</div>`;
   return head('Réglages') + `
+  <button class="xbtn" data-act="profile"><b>Mon profil</b><span>${esc(db.ref.profile.nom || 'À compléter')}</span>${ICON.next}</button>
   <div class="field"><span class="lbl">Précision GPS minimale pour enregistrer</span>${grp('maxAcc', [10, 20, 30, 50], 'm')}<span class="hint">Les positions moins précises sont ignorées. ±20 m convient en général ; ±10 m sur route dégagée.</span></div>
   <div class="field"><span class="lbl">Pas minimal entre deux points</span>${grp('minStep', [3, 5, 10])}<span class="hint">Un pas plus grand limite l’effet du « bruit » GPS quand tu roules lentement.</span></div>
   <div class="field"><span class="lbl">Mode test</span><div class="chips"><button class="chip" data-act="set" data-arg="sim:0" aria-pressed="${!S.sim}">GPS réel</button><button class="chip" data-act="set" data-arg="sim:1" aria-pressed="${!!S.sim}">GPS simulé</button></div><span class="hint">Le GPS simulé fait rouler un véhicule fictif, pour essayer l’appli au bureau.</span></div>
-  <div class="field"><span class="lbl">Données</span><div class="grid2"><button class="btn ghost" data-act="backupAll">Tout sauvegarder</button><button class="btn ghost" data-act="import">Importer</button></div><span class="hint">Les données restent dans ce téléphone. Fais une sauvegarde de temps en temps et envoie-la toi par WhatsApp ou e-mail.</span></div>
+  <div class="field"><span class="lbl">Sauvegarde</span>
+    <div class="grid2"><button class="btn ghost" data-act="backup" data-arg="1">Avec photos</button><button class="btn ghost" data-act="backup" data-arg="0">Sans photos</button></div>
+    <button class="btn ghost" data-act="import">${ICON.file}Importer un fichier</button>
+    <span class="hint">${db.lastBackup ? 'Dernière sauvegarde : ' + esc(fmtDate(db.lastBackup)) + '. ' : ''}Envoie-toi la sauvegarde par WhatsApp ou e-mail. « Importer » accepte une sauvegarde ou le paquet mission.</span></div>
+  <div class="field"><span class="lbl">Stockage</span><span class="hint" id="st-info">${Store.mode === 'idb' ? 'Base interne du navigateur' : 'Stockage simple (limité, sans photos)'}</span></div>
   <p class="note">PK Terrain · version ${APP_VERSION}</p>`;
+}
+async function fillStorageInfo() {
+  const el = $('#st-info'); if (!el) return;
+  const parts = [Store.mode === 'idb' ? 'Base interne du navigateur' : 'Stockage simple (limité, sans photos)'];
+  try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); if (e.usage != null) parts.push(nf1.format(e.usage / 1048576) + ' Mo utilisés'); } } catch (e) { }
+  try { if (navigator.storage && navigator.storage.persisted) parts.push(await navigator.storage.persisted() ? 'protégé contre l’effacement automatique' : 'non protégé : fais des sauvegardes régulières'); } catch (e) { }
+  if ($('#st-info')) $('#st-info').textContent = parts.join(' · ');
 }
 
 /* ---------- Exports ---------- */
@@ -1141,17 +1615,27 @@ const csv = rows => '﻿' + rows.map(r => r.map(csvCell).join(';')).join('\r\n')
 const dec = (v, d) => v == null || !isFinite(v) ? '' : v.toFixed(d).replace('.', ',');
 const slug = s => (s || 'itineraire').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'itineraire';
 const today = () => new Date().toISOString().slice(0, 10);
+const headCols = r => { const c = routeComp(r), m = routeMkt(r); return [compName(c), m ? m.lot || '' : '', r.code || '', r.name]; };
 
 function obsCSV(r) {
-  const z = r.pts.length ? toUTM(r.pts[0][LAT], r.pts[0][LON]).zone : null;
-  const rows = [['N°', 'Nature', 'PK', 'PK (m)', 'Côté', 'Gravité', 'Longueur (m)', 'Note', 'PK borne', 'Écart GPS − borne (m)', 'Latitude', 'Longitude', 'X UTM', 'Y UTM', 'Zone UTM', 'Précision GPS (m)', 'Source', 'Date']];
+  const z = r.pts.length ? toUTM(r.pts[0][LAT], r.pts[0][LON]).zone : null, hc = headCols(r);
+  const rows = [['Entreprise', 'Lot', 'Code itinéraire', 'Itinéraire', 'N°', 'Nature', 'PK', 'PK (m)', 'Côté', 'Gravité', 'Longueur (m)', 'Note', 'PK borne', 'Écart GPS − borne (m)', 'Latitude', 'Longitude', 'X UTM', 'Y UTM', 'Zone UTM', 'Précision GPS (m)', 'Photos', 'Source', 'Date']];
   [...r.obs].sort((a, b) => obsPk(a) - obsPk(b)).forEach((o, i) => {
     const u = hasPos(o) ? toUTM(o.lat, o.lon, z) : null;
     const b = o.kind === 'borne';
-    rows.push([i + 1, b ? 'Borne' : o.type, fmtPK(obsPk(o)), dec(obsPk(o), 1), b ? '' : COTES[o.cote], b ? '' : GRAV[o.grav], b ? '' : dec(o.len, 1),
+    rows.push(hc.concat([i + 1, b ? 'Borne' : o.type, fmtPK(obsPk(o)), dec(obsPk(o), 1), b ? '' : COTES[o.cote], b ? '' : GRAV[o.grav], b ? '' : dec(o.len, 1),
       b ? [o.recale ? 'Chaînage recalé' : '', o.note].filter(Boolean).join(' · ') : o.note,
       b ? fmtPK(o.pkB) : '', b ? dec(o.ec, 1) : '', u ? dec(o.lat, 7) : '', u ? dec(o.lon, 7) : '', u ? dec(u.x, 2) : '', u ? dec(u.y, 2) : '', u ? u.zone + u.hemi : '', dec(o.acc, 0),
-      o.src === 'manuel' ? 'Saisie après coup' : 'GPS', new Date(o.t).toLocaleString('fr-FR')]);
+      (o.photos || []).length || '', o.src === 'manuel' ? 'Saisie après coup' : 'GPS', new Date(o.t).toLocaleString('fr-FR')]));
+  });
+  return csv(rows);
+}
+function ouvCSV(r) {
+  const z = r.pts.length ? toUTM(r.pts[0][LAT], r.pts[0][LON]).zone : null, hc = headCols(r);
+  const rows = [['Entreprise', 'Lot', 'Code itinéraire', 'Itinéraire', 'Code ouvrage', 'Type', 'Dimensions', 'PK', 'PK (m)', 'Travaux', 'État', 'Note', 'Latitude', 'Longitude', 'X UTM', 'Y UTM', 'Zone UTM']];
+  ouvsOf(r).forEach(s => {
+    const u = hasPos(s) ? toUTM(s.lat, s.lon, z) : null;
+    rows.push(hc.concat([s.code || '', s.type || '', s.dims || '', s.pk != null ? fmtPK(s.pk) : '', dec(s.pk, 1), s.travaux || '', OETAT[s.etat] || 'Prévu', s.note || '', u ? dec(s.lat, 7) : '', u ? dec(s.lon, 7) : '', u ? dec(u.x, 2) : '', u ? dec(u.y, 2) : '', u ? u.zone + u.hemi : '']));
   });
   return csv(rows);
 }
@@ -1168,49 +1652,110 @@ function routeKML(r) {
   const obs = [...r.obs].sort((a, b) => obsPk(a) - obsPk(b)).filter(hasPos).map(o => o.kind === 'borne'
     ? pm('Borne PK ' + fmtPK(o.pkB), ['PK GPS ' + fmtPK(o.pk), 'écart ' + fmtSigned(o.ec), o.note].filter(Boolean).join(' · '), 'borne', o.lat, o.lon)
     : pm('PK ' + fmtPK(o.pk) + ' · ' + o.type, [GRAV[o.grav], COTES[o.cote], o.len ? 'sur ' + o.len + ' m' : '', o.note].filter(Boolean).join(' · '), 'obs' + o.grav, o.lat, o.lon)).join('');
+  const ouv = ouvsOf(r).filter(hasPos).map(s => pm((s.code ? s.code + ' · ' : '') + (s.type || 'Ouvrage'), [s.pk != null ? 'PK ' + fmtPK(s.pk) : '', s.dims, s.travaux, OETAT[s.etat] || 'Prévu', s.note].filter(Boolean).join(' · '), 'ouv', s.lat, s.lon)).join('');
   const ic = (id, color, href, scale) => `<Style id="${id}"><IconStyle><color>${color}</color><scale>${scale}</scale><Icon><href>${href}</href></Icon></IconStyle></Style>`;
   const dotHref = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png';
   return `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${esc(r.name)}</name>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${esc(routeTitle(r))}</name>
 <Style id="axe"><LineStyle><color>ff1c16c3</color><width>4</width></LineStyle></Style>
-${ic('pk', 'ffffffff', dotHref, 0.6)}${ic('borne', 'ff1c16c3', 'http://maps.google.com/mapfiles/kml/shapes/square.png', 0.8)}${ic('obs1', 'ff4a7a1c', dotHref, 1)}${ic('obs2', 'ff1aa0e8', dotHref, 1)}${ic('obs3', 'ff1823b4', dotHref, 1.1)}
-<Placemark><name>Axe ${esc(r.name)}</name><description>PK ${fmtPK(firstPk(r))} → ${fmtPK(lastPk(r))}</description><styleUrl>#axe</styleUrl><LineString><tessellate>1</tessellate><coordinates>${coords}</coordinates></LineString></Placemark>
+${ic('pk', 'ffffffff', dotHref, 0.6)}${ic('borne', 'ff1c16c3', 'http://maps.google.com/mapfiles/kml/shapes/square.png', 0.8)}${ic('obs1', 'ff4a7a1c', dotHref, 1)}${ic('obs2', 'ff1aa0e8', dotHref, 1)}${ic('obs3', 'ff1823b4', dotHref, 1.1)}${ic('ouv', 'ffd05f1a', 'http://maps.google.com/mapfiles/kml/shapes/triangle.png', 0.9)}
+<Placemark><name>Axe ${esc(routeTitle(r))}</name><description>PK ${fmtPK(firstPk(r))} → ${fmtPK(lastPk(r))}</description><styleUrl>#axe</styleUrl><LineString><tessellate>1</tessellate><coordinates>${coords}</coordinates></LineString></Placemark>
 <Folder><name>Repères PK</name>${marks}</Folder>
 <Folder><name>Constats et bornes</name>${obs}</Folder>
+<Folder><name>Ouvrages</name>${ouv}</Folder>
 </Document></kml>`;
 }
 async function shareFile(name, mime, content) {
-  const blob = new Blob([content], { type: mime });
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
   try {
     const file = new File([blob], name, { type: mime });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
-  } catch (e) { if (e && e.name === 'AbortError') return; }
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return true; }
+  } catch (e) { if (e && e.name === 'AbortError') return false; }
   const url = URL.createObjectURL(blob), a = document.createElement('a');
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
   toast('Fichier prêt : ' + name);
+  return true;
 }
 function doExport(kind, r) {
-  const base = slug(r.name) + '_' + today();
+  const base = slug([compName(routeComp(r)), r.code, r.name].filter(Boolean).join(' ')) + '_' + today();
   if (kind === 'obs') { if (!r.obs.length) return toast('Aucun constat à partager.', 'warn'); return shareFile(base + '_constats.csv', 'text/csv', obsCSV(r)); }
-  if (r.pts.length < 2 && kind !== 'json') return toast('Le tracé est encore vide.', 'warn');
+  if (kind === 'ouv') { if (!ouvsOf(r).length) return toast('Aucun ouvrage à partager.', 'warn'); return shareFile(base + '_ouvrages.csv', 'text/csv', ouvCSV(r)); }
+  if (r.pts.length < 2) return toast('Le tracé est encore vide.', 'warn');
   if (kind === 'table') return shareFile(base + '_tableau-PK-' + ui.step + 'm.csv', 'text/csv', tableCSV(r));
   if (kind === 'kml') return shareFile(base + '.kml', 'application/vnd.google-earth.kml+xml', routeKML(r));
-  if (kind === 'json') return shareFile(base + '_sauvegarde.json', 'application/json', JSON.stringify({ app: 'PK Terrain', v: 2, exported: new Date().toISOString(), routes: [r] }));
 }
-function importBackup(text) {
-  let data; try { data = JSON.parse(text); } catch (e) { return toast('Fichier illisible : choisis une sauvegarde PK Terrain (.json).', 'bad'); }
-  const routes = data && Array.isArray(data.routes) ? data.routes.filter(r => r && r.id && Array.isArray(r.pts) && Array.isArray(r.obs)) : [];
-  if (!routes.length) return toast('Aucun itinéraire dans ce fichier.', 'warn');
-  migrate({ routes });
+const blobToB64 = b => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = () => rej(fr.error); fr.readAsDataURL(b); });
+function b64ToBlob(s, type) { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: type || 'image/jpeg' }); }
+async function doBackup(withPhotos) {
+  await save(true);
+  if (!db.routes.length && !db.ref.companies.length) return toast('Rien à sauvegarder pour l’instant.', 'warn');
+  toast('Préparation de la sauvegarde…');
+  const out = { app: 'PK Terrain', kind: 'sauvegarde', v: 3, exported: new Date().toISOString(), state: { ref: db.ref, settings: db.settings }, routes: db.routes, photos: [] };
+  if (withPhotos && canPhoto()) {
+    for (const id of referencedPhotos(false)) {
+      try { const p = await photoGet(id); if (p && p.blob) out.photos.push({ id: p.id, type: p.blob.type, w: p.w, h: p.h, t: p.t, lat: p.lat, lon: p.lon, data: await blobToB64(p.blob) }); } catch (e) { }
+    }
+  }
+  const nm = 'pk-terrain_sauvegarde_' + today() + (withPhotos ? '' : '_sans-photos') + '.json';
+  const ok = await shareFile(nm, 'application/json', JSON.stringify(out));
+  if (ok) { db.lastBackup = Date.now(); save(true); if (ui.view === 'home') render(); }
+}
+const newer = (a, b) => (a && a.updated || 0) >= (b && b.updated || 0);
+function mergeList(cur, inc) {
+  let n = 0;
+  for (const x of inc || []) {
+    if (!x || !x.id) continue;
+    const i = cur.findIndex(y => y.id === x.id);
+    if (i < 0) { cur.push(x); n++; } else if (newer(x, cur[i]) && (x.updated || 0) > (cur[i].updated || 0)) { cur[i] = Object.assign({}, cur[i], x); n++; }
+  }
+  return n;
+}
+async function importFile(text) {
+  let data; try { data = JSON.parse(text); } catch (e) { return toast('Fichier illisible : choisis une sauvegarde ou un paquet PK Terrain (.json).', 'bad'); }
+  if (!data || data.app !== 'PK Terrain' && !Array.isArray(data.routes)) return toast('Ce fichier ne vient pas de PK Terrain.', 'bad');
+  if (data.kind === 'paquet-mission') { closeSheet(); return openSheet(paquetSheet(data)); }
+  const routes = Array.isArray(data.routes) ? data.routes.filter(r => r && r.id && Array.isArray(r.pts) && Array.isArray(r.obs)).map(normRoute) : [];
   let added = 0, updated = 0;
   for (const r of routes) {
     const i = db.routes.findIndex(x => x.id === r.id);
-    if (i < 0) { db.routes.push(r); added++; }
-    else if ((r.updated || 0) > (db.routes[i].updated || 0)) { db.routes[i] = r; updated++; }
+    if (i < 0) { db.routes.push(r); Store.mark(r.id); added++; }
+    else if ((r.updated || 0) > (db.routes[i].updated || 0)) { db.routes[i] = r; Store.mark(r.id); updated++; }
   }
-  save(true); closeSheet(); render();
-  toast(added + ' ajouté' + (added > 1 ? 's' : '') + (updated ? ', ' + updated + ' mis à jour' : ''));
+  let refN = 0;
+  if (data.state && data.state.ref) {
+    const inc = data.state.ref;
+    for (const k of ['companies', 'markets', 'postes', 'structures']) refN += mergeList(db.ref[k], inc[k]);
+    if (!db.ref.profile.nom && inc.profile) db.ref.profile = inc.profile;
+    if (!db.ref.mission.nom && inc.mission) db.ref.mission = inc.mission;
+  }
+  let ph = 0;
+  if (Array.isArray(data.photos) && canPhoto()) {
+    for (const p of data.photos) { try { if (!(await photoGet(p.id))) { await photoPut({ id: p.id, blob: b64ToBlob(p.data, p.type), w: p.w, h: p.h, t: p.t || Date.now(), lat: p.lat, lon: p.lon }); ph++; } } catch (e) { } }
+  }
+  await save(true); closeSheet(); render();
+  toast([plural(added, 'itinéraire ajouté', 'itinéraires ajoutés'), updated ? plural(updated, 'mis à jour', 'mis à jour') : '', refN ? plural(refN, 'fiche de référence', 'fiches de référence') : '', ph ? plural(ph, 'photo', 'photos') : ''].filter(Boolean).join(' · '));
+}
+function applyPaquet(pq, ids) {
+  const t = pq.created ? Date.parse(pq.created) || 1 : 1;
+  const sel = new Set(ids);
+  const cs = (pq.companies || []).filter(c => sel.has(c.id)), ms = (pq.markets || []).filter(m => sel.has(m.companyId));
+  const mIds = new Set(ms.map(m => m.id));
+  const st = x => Object.assign({}, x, { updated: x.updated || t });
+  let n = 0;
+  n += mergeList(db.ref.companies, cs.map(st));
+  n += mergeList(db.ref.markets, ms.map(st));
+  n += mergeList(db.ref.postes, (pq.postes || []).filter(p => mIds.has(p.marketId)).map(st));
+  n += mergeList(db.ref.structures, (pq.structures || []).filter(s => mIds.has(s.marketId)).map(st));
+  let ni = 0;
+  for (const it of (pq.itineraries || []).filter(i => mIds.has(i.marketId))) {
+    const r = getRoute(it.id), u = it.updated || t;
+    if (!r) { db.routes.push(normRoute({ id: it.id, name: it.nom || it.name || 'Itinéraire', code: it.code || '', marketId: it.marketId, longueurKm: it.longueurKm ?? null, type: it.type || '', pkStart: it.pkStart || 0, created: Date.now(), updated: Date.now(), refUpdated: u, pts: [], obs: [] })); Store.mark(it.id); ni++; }
+    else if (u > (r.refUpdated || 0) && u > (r.refEdited || 0)) { Object.assign(r, { name: it.nom || r.name, code: it.code ?? r.code, marketId: it.marketId, longueurKm: it.longueurKm ?? r.longueurKm, type: it.type || r.type, refUpdated: u }); Store.mark(r.id); ni++; }
+  }
+  if (pq.mission && !db.ref.mission.nom) db.ref.mission = Object.assign({}, pq.mission);
+  save(true);
+  return { n, ni, nc: cs.length };
 }
 
 /* ---------- Actions ---------- */
@@ -1230,19 +1775,91 @@ function arm(b, label) {
 function openForm(html) { openSheet(html); sheetSync(); }
 const A = {
   home() { ui.view = 'home'; render(); scrollTo(0, 0); },
+  company(id) { ui.view = 'company'; ui.companyId = id; render(); scrollTo(0, 0); },
+  bordereau(id) { ui.view = 'bordereau'; ui.marketId = id; render(); scrollTo(0, 0); },
   open(id) { ui.view = 'route'; ui.routeId = id; ui.tab = 'terrain'; render(); scrollTo(0, 0); },
   tab(t) { ui.tab = t; render(); },
-  settings() { openSheet(settingsSheet()); },
+  settings() { openSheet(settingsSheet()); fillStorageInfo(); },
   set(arg) {
     const [k, v] = arg.split(':'), nv = k === 'sim' ? v === '1' : +v, changed = db.settings[k] !== nv;
-    db.settings[k] = nv; save(true); openSheet(settingsSheet());
+    db.settings[k] = nv; save(true); openSheet(settingsSheet()); fillStorageInfo();
     if (k === 'sim' && changed) { if (live.mode) { stopLive(false); toast('Session arrêtée : relance-la avec la nouvelle source GPS.'); } render(); }
   },
-  newRoute() { openSheet(newRouteSheet()); },
-  startNew() {
-    const name = $('#n-name').value.trim() || 'Itinéraire du ' + new Date().toLocaleDateString('fr-FR');
-    const r = { id: uid(), name, pkStart: readPK('n'), created: Date.now(), updated: Date.now(), pts: [], obs: [] };
-    db.routes.push(r); save(true); closeSheet(); startLive(r, 'rec');
+  profile() { openSheet(profileSheet()); },
+  saveProfile() {
+    db.ref.profile = Object.assign({}, db.ref.profile, { nom: val('p-nom'), fonction: val('p-fct') });
+    db.ref.mission = Object.assign({}, db.ref.mission, { nom: val('p-mis'), bureau: val('p-bur'), chefMission: val('p-cm') });
+    save(true); closeSheet(); render(); toast('Profil enregistré');
+  },
+  newCompany() { openSheet(companySheet(null)); },
+  editCompany(id) { const c = comp(id); if (c) openSheet(companySheet(c)); },
+  saveCompany() {
+    const F = ui.form, sig = val('c-sig'), nom = val('c-nom');
+    if (!sig && !nom) return toast('Indique au moins le nom de l’entreprise.', 'warn');
+    const data = { sigle: sig || nom, nom: nom || sig, resp: val('c-resp'), tel: val('c-tel'), hse: val('c-hse'), email: val('c-mail'), note: val('c-note'), updated: stamp() };
+    if (F.id) { const c = comp(F.id); remember('entreprise « ' + compName(c) + ' » modifiée', { ref: true }); Object.assign(c, data); }
+    else { const c = Object.assign({ id: 'ent-' + uid() }, data); db.ref.companies.push(c); ui.view = 'company'; ui.companyId = c.id; }
+    save(true); closeSheet(); render(); toast('Entreprise enregistrée');
+  },
+  archCompany(id) {
+    const c = comp(id); if (!c) return;
+    remember((c.archived ? 'entreprise restaurée' : 'entreprise archivée') + ' : ' + compName(c), { ref: true });
+    c.archived = !c.archived; c.updated = stamp(); save(true); closeSheet();
+    if (c.archived) { ui.view = 'home'; render(); undoToast('Entreprise archivée'); } else { render(); toast('Entreprise restaurée'); }
+  },
+  newMarket(cid) { openSheet(marketSheet(null, cid)); },
+  editMarket(id) { const m = mkt(id); if (m) openSheet(marketSheet(m)); },
+  saveMarket() {
+    const F = ui.form;
+    const data = { intitule: val('m-int'), lot: val('m-lot'), departements: val('m-dep'), numero: val('m-num'), delaiJours: num(val('m-del')), lineaireKm: num(val('m-lin')), dateOS: val('m-os'), montant: num(val('m-mnt')), note: val('m-note'), updated: stamp() };
+    if (!data.intitule && !data.lot) return toast('Indique l’intitulé ou le lot du marché.', 'warn');
+    if (F.id) { const m = mkt(F.id); remember('marché ' + mktLabel(m) + ' modifié', { ref: true }); Object.assign(m, data); }
+    else db.ref.markets.push(Object.assign({ id: 'mar-' + uid(), companyId: F.companyId }, data));
+    save(true); closeSheet(); render(); toast('Marché enregistré');
+  },
+  archMarket(id) {
+    const m = mkt(id); if (!m) return;
+    remember((m.archived ? 'marché restauré' : 'marché archivé') + ' : ' + mktLabel(m), { ref: true });
+    m.archived = !m.archived; m.updated = stamp(); save(true); closeSheet(); render();
+    if (m.archived) undoToast('Marché archivé'); else toast('Marché restauré');
+  },
+  newIti(mid) { openSheet(itinerarySheet('new', null, mid)); },
+  newRoute() { openSheet(itinerarySheet('rec', null, '')); },
+  editIti(id) { const r = getRoute(id); if (r) openSheet(itinerarySheet('edit', r)); },
+  saveIti() {
+    const F = ui.form, name = val('i-name'), code = val('i-code');
+    if (!name && !code) return toast('Indique le nom ou le code de l’itinéraire.', 'warn');
+    const data = { name: name || code, code, marketId: val('i-mkt') || null, longueurKm: num(val('i-len')), type: F.type || '' };
+    if (F.mode === 'edit') {
+      const r = getRoute(F.id); if (!r) return closeSheet();
+      if (!recording(r)) remember('itinéraire « ' + routeTitle(r) + ' » modifié', { routes: [r] });
+      Object.assign(r, data, { refEdited: Date.now() });
+      if (!r.pts.length && $('#n-km')) r.pkStart = readPK('n');
+      commitRoute(r); closeSheet(); render(); return toast('Itinéraire enregistré');
+    }
+    const r = normRoute(Object.assign({ id: uid(), pkStart: $('#n-km') ? readPK('n') : 0, created: Date.now(), updated: Date.now(), refEdited: Date.now(), pts: [], obs: [] }, data));
+    commitRoute(r); closeSheet();
+    if (F.mode === 'rec') startLive(r, 'rec'); else { ui.view = 'route'; ui.routeId = r.id; ui.tab = 'terrain'; render(); scrollTo(0, 0); }
+  },
+  attach(id) { const r = getRoute(id); if (r) openSheet(attachSheet(r)); },
+  doMerge() {
+    const r = getRoute(ui.form && ui.form.id), sel = document.querySelector('input[name=att]:checked');
+    if (!r) return closeSheet();
+    if (!sel) return toast('Choisis l’itinéraire prévu correspondant.', 'warn');
+    const t = getRoute(sel.value); if (!t) return;
+    if (isLiveOn(r)) stopLive(false);
+    remember('tracé rattaché à ' + (t.code || t.name), { routes: [r, t], ref: true });
+    Object.assign(t, { pts: r.pts, obs: r.obs, pkStart: r.pkStart, created: Math.min(t.created || Date.now(), r.created || Date.now()) });
+    for (const s of db.ref.structures) if (s.routeId === r.id) s.routeId = t.id;
+    if (db.active && db.active.routeId === r.id) db.active.routeId = t.id;
+    dropRoute(r.id); commitRoute(t);
+    closeSheet(); ui.view = 'route'; ui.routeId = t.id; ui.tab = 'terrain'; render(); undoToast('Tracé rattaché à ' + routeTitle(t));
+  },
+  doClassify() {
+    const r = getRoute(ui.form && ui.form.id); if (!r) return closeSheet();
+    const mid = val('a-mkt'); if (!mid) return toast('Choisis un marché.', 'warn');
+    remember('« ' + routeTitle(r) + ' » classé', { routes: [r] });
+    r.marketId = mid; r.refEdited = Date.now(); commitRoute(r); closeSheet(); render(); undoToast('Itinéraire classé sous ' + compName(routeComp(r)));
   },
   rec() { const r = getRoute(ui.routeId); if (r) startLive(r, 'rec'); },
   loc() { const r = getRoute(ui.routeId); if (r) startLive(r, 'loc'); },
@@ -1255,18 +1872,71 @@ const A = {
   borne() { const s = snapshot(); if (s) openForm(borneSheet('live', null, s)); },
   addObs() { openForm(constatSheet('new')); },
   addBorne() { openForm(borneSheet('new')); },
+  addOuv() { openForm(ouvSheet('new')); },
+  editOuv(id) { const s = db.ref.structures.find(x => x.id === id); if (s) openForm(ouvSheet('edit', s)); },
+  saveOuv() {
+    const F = ui.form, r = getRoute(ui.routeId); if (!F || !r) return;
+    if (!F.type) return toast('Choisis le type d’ouvrage.', 'warn');
+    const pk = r1(readPK('s'));
+    const data = { code: val('s-code'), dims: val('s-dims'), type: F.type, travaux: F.travaux || '', etat: F.etat || 'prevu', note: val('s-note'), pk, updated: stamp() };
+    const m = routeMkt(r);
+    if (F.mode === 'edit') {
+      const s = db.ref.structures.find(x => x.id === F.id); if (!s) return closeSheet();
+      remember('ouvrage ' + (s.code || s.type) + ' modifié', { ref: true });
+      if (F.pk0 == null || Math.abs(pk - F.pk0) > 0.5 || !hasPos(s)) { const p = r.pts.length >= 2 ? pkToPos(r.pts, pk) : null; s.lat = p ? p.lat : null; s.lon = p ? p.lon : null; }
+      Object.assign(s, data);
+    } else {
+      const p = r.pts.length >= 2 ? pkToPos(r.pts, pk) : null;
+      db.ref.structures.push(Object.assign({ id: 'ouv-' + uid(), routeId: r.id, marketId: m ? m.id : null, lat: p ? p.lat : null, lon: p ? p.lon : null }, data));
+      ui.lastPk[r.id] = Math.round(pk);
+    }
+    save(true); closeSheet(); render(); toast('Ouvrage enregistré au PK ' + fmtPK(pk));
+  },
+  delOuv(id) {
+    const s = db.ref.structures.find(x => x.id === id); if (!s) return closeSheet();
+    remember('ouvrage ' + (s.code || s.type) + ' supprimé', { ref: true });
+    db.ref.structures = db.ref.structures.filter(x => x.id !== id); save(true); closeSheet(); render(); undoToast('Ouvrage supprimé');
+  },
+  newPoste(mid) { openSheet(posteSheet(null, mid)); },
+  editPoste(id) { const p = db.ref.postes.find(x => x.id === id); if (p) openSheet(posteSheet(p)); },
+  savePoste() {
+    const F = ui.form, m = mkt(F.marketId); if (!m) return closeSheet();
+    const parIti = {};
+    for (const r of routesOf(m)) { const v = num(val('qi-' + r.id)); if (v != null) parIti[r.id] = v; }
+    const data = { num: val('q-num'), unit: val('q-unit'), des: val('q-des'), qty: num(val('q-qty')), pu: num(val('q-pu')), tranche: val('q-tr'), parIti, updated: stamp() };
+    if (!data.num && !data.des) return toast('Indique le n° de prix ou la désignation.', 'warn');
+    if (F.id) { const p = db.ref.postes.find(x => x.id === F.id); remember('poste ' + (p.num || '') + ' modifié', { ref: true }); Object.assign(p, data); }
+    else db.ref.postes.push(Object.assign({ id: 'pos-' + uid(), marketId: m.id }, data));
+    save(true); closeSheet(); render(); toast('Poste enregistré');
+  },
+  delPoste(id) {
+    const p = db.ref.postes.find(x => x.id === id); if (!p) return closeSheet();
+    remember('poste ' + (p.num || '') + ' supprimé', { ref: true });
+    db.ref.postes = db.ref.postes.filter(x => x.id !== id); save(true); closeSheet(); render(); undoToast('Poste supprimé');
+  },
+  applyPaquet() {
+    const pq = ui.pending; if (!pq) return closeSheet();
+    const ids = [...document.querySelectorAll('input[name=pq]:checked')].map(x => x.value);
+    if (!ids.length) return toast('Coche au moins une entreprise.', 'warn');
+    const res = applyPaquet(pq, ids); ui.pending = null;
+    closeSheet(); ui.view = 'home'; render();
+    toast(plural(res.nc, 'entreprise importée', 'entreprises importées') + ' · ' + plural(res.ni, 'itinéraire', 'itinéraires'));
+  },
   pick(v, b) {
     const g = b.dataset.group; ui.form[g] = g === 'grav' ? +v : v;
     b.parentElement.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
   },
+  viewPhoto(id) { viewPhoto(id); },
+  unPhoto(id) { if (ui.form && ui.form.photos) { ui.form.photos = ui.form.photos.filter(x => x !== id); refreshPhotos(); } A.closeViewer(); },
+  closeViewer() { const v = $('#viewer'); v.hidden = true; v.innerHTML = ''; },
   saveObs() {
     const F = ui.form, r = getRoute(ui.routeId); if (!F || !r) return;
     if (!F.type) return toast('Choisis la nature du constat.', 'warn');
     const pk = r1(readPK('o')), len = parseFloat(($('#o-len').value || '').replace(',', '.')), note = $('#o-note').value.trim();
-    const data = { pk, type: F.type, cote: F.cote, grav: F.grav, len: isFinite(len) && len > 0 ? len : null, note };
+    const data = { pk, type: F.type, cote: F.cote, grav: F.grav, len: isFinite(len) && len > 0 ? len : null, note, photos: [...F.photos] };
     if (F.mode === 'edit') {
       const o = r.obs.find(x => x.id === F.id); if (!o) return closeSheet();
-      remember(r, 'constat modifié au PK ' + fmtPK(o.pk), 'obs');
+      remember('constat modifié au PK ' + fmtPK(o.pk), { routes: [r], obsOnly: true });
       if (Math.abs(pk - o.pk) > 0.5) { const p = r.pts.length >= 2 ? pkToPos(r.pts, pk) : null; o.lat = p ? p.lat : null; o.lon = p ? p.lon : null; o.acc = null; }
       Object.assign(o, data);
       commitRoute(r); closeSheet(); render(); undoToast('Constat modifié');
@@ -1283,10 +1953,10 @@ const A = {
   saveBorne() {
     const F = ui.form; if (!F) return;
     const r = getRoute(F.mode === 'live' ? live.routeId : ui.routeId); if (!r) return;
-    const pkB = r1(readPK('b')), note = ($('#b-note').value || '').trim(), wantCal = !!($('#b-cal') && $('#b-cal').checked);
+    const pkB = r1(readPK('b')), note = ($('#b-note').value || '').trim(), wantCal = !!($('#b-cal') && $('#b-cal').checked), photos = [...F.photos];
     if (F.mode === 'live') {
       const s = F.snap;
-      r.obs.push({ id: uid(), kind: 'borne', src: 'gps', pk: r1(s.pk), pkB, ec: r1(s.pk - pkB), lat: s.lat, lon: s.lon, acc: s.acc, t: Date.now(), recale: wantCal && live.mode === 'rec', note });
+      r.obs.push({ id: uid(), kind: 'borne', src: 'gps', pk: r1(s.pk), pkB, ec: r1(s.pk - pkB), lat: s.lat, lon: s.lon, acc: s.acc, t: Date.now(), recale: wantCal && live.mode === 'rec', note, photos });
       if (wantCal && live.mode === 'rec') {
         const f = live.fix;
         if (f && f.acc <= db.settings.maxAcc && r.pts.length) r.pts.push([f.lat, f.lon, pkB, Math.round(f.acc), f.t]);
@@ -1299,7 +1969,7 @@ const A = {
     let o, label;
     if (F.mode === 'new') {
       const pk = r1(readPK('bp')), p = w.pts.length >= 2 ? pkToPos(w.pts, pk) : null;
-      o = { id: uid(), kind: 'borne', src: 'manuel', pk, pkB, ec: r1(pk - pkB), lat: p ? p.lat : null, lon: p ? p.lon : null, acc: null, t: Date.now(), recale: false, note };
+      o = { id: uid(), kind: 'borne', src: 'manuel', pk, pkB, ec: r1(pk - pkB), lat: p ? p.lat : null, lon: p ? p.lon : null, acc: null, t: Date.now(), recale: false, note, photos };
       w.obs.push(o); label = 'borne PK ' + fmtPK(pkB) + ' ajoutée';
       ui.lastPk[r.id] = Math.round(pk);
     } else {
@@ -1312,12 +1982,12 @@ const A = {
         if (Math.abs(pk - o.pk) > 0.5) { const p = w.pts.length >= 2 ? pkToPos(w.pts, pk) : null; o.pk = pk; o.lat = p ? p.lat : null; o.lon = p ? p.lon : null; o.acc = null; }
       }
       if (!(F.locked && wasCal)) o.pkB = pkB;
-      o.note = note; o.ec = r1(o.pk - o.pkB);
+      o.note = note; o.photos = photos; o.ec = r1(o.pk - o.pkB);
       if (F.locked) o.recale = wasCal;
     }
     if (!F.locked && wantCal) { const err = recalAt(w, o); if (err) return toast(err, 'warn'); }
-    remember(r, label, F.locked ? 'obs' : 'route');
-    if (F.locked) { r.obs = w.obs; commitRoute(r); } else commitRoute(w);
+    remember(label, { routes: [r], obsOnly: F.locked });
+    if (F.locked) { r.obs = w.obs; commitRoute(r); } else commitRoute(normRoute(w));
     closeSheet(); render();
     if (F.mode === 'new') toast('Borne PK ' + fmtPK(pkB) + ' ajoutée · écart ' + fmtSigned(o.ec) + (o.recale ? ' · recalé' : ''));
     else undoToast('Borne modifiée' + (o.recale ? ' · chaînage recalé' : ''));
@@ -1330,11 +2000,11 @@ const A = {
     const r = getRoute(ui.routeId); const o = r && r.obs.find(x => x.id === id); if (!o) return closeSheet();
     const label = (o.kind === 'borne' ? 'borne PK ' + fmtPK(o.pkB) : o.type.toLowerCase() + ' au PK ' + fmtPK(o.pk)) + ' supprimé' + (o.kind === 'borne' ? 'e' : '');
     if (o.kind === 'borne' && o.recale && !recording(r)) {
-      remember(r, label, 'route');
+      remember(label, { routes: [r] });
       const w = clone(r), oo = w.obs.find(x => x.id === id);
-      unrecal(w, oo); w.obs = w.obs.filter(x => x.id !== id); commitRoute(w);
+      unrecal(w, oo); w.obs = w.obs.filter(x => x.id !== id); commitRoute(normRoute(w));
     } else {
-      remember(r, label, 'obs');
+      remember(label, { routes: [r], obsOnly: true });
       r.obs = r.obs.filter(x => x.id !== id); commitRoute(r);
     }
     closeSheet(); render(); undoToast('Supprimé');
@@ -1353,28 +2023,24 @@ const A = {
     const res = trackOp(r, F.op, v1, v2);
     if (res.error) return toast(res.error, 'warn');
     const label = { cutStart: 'début coupé au PK ' + fmtPK(v1), cutEnd: 'fin coupée au PK ' + fmtPK(v1), section: 'tronçon PK ' + fmtPK(v1) + ' → ' + fmtPK(v2) + ' supprimé', shift: 'PK de départ changé en ' + fmtPK(v1), reverse: 'sens du chaînage inversé' }[F.op];
-    remember(r, label, 'route');
-    commitRoute(res.r); closeSheet(); render(); undoToast('Tracé corrigé : ' + label);
+    remember(label, { routes: [r] });
+    commitRoute(normRoute(res.r)); closeSheet(); render(); undoToast('Tracé corrigé : ' + label);
   },
   undo() { doUndo(); },
   step(v) { ui.step = +v; render(); },
   coord(v) { ui.coord = v; render(); },
   export(kind) { const r = getRoute(ui.routeId); if (r) doExport(kind, r); },
-  backupAll() { if (!db.routes.length) return toast('Rien à sauvegarder pour l’instant.', 'warn'); shareFile('pk-terrain_sauvegarde_' + today() + '.json', 'application/json', JSON.stringify({ app: 'PK Terrain', v: 2, exported: new Date().toISOString(), routes: db.routes })); },
+  backup(v) { doBackup(v === '1'); },
   import() { $('#imp').value = ''; $('#imp').click(); },
-  rename() {
-    const r = getRoute(ui.routeId);
-    openSheet(head('Renommer') + `<div class="field"><label class="lbl" for="rn">Nom de l’itinéraire</label><input id="rn" type="text" value="${esc(r.name)}"></div><button class="btn" data-act="saveName">Enregistrer</button>`);
-  },
-  saveName() { const r = getRoute(ui.routeId), v = $('#rn').value.trim(); if (v) { r.name = v; commitRoute(r); } closeSheet(); render(); },
   delRoute(_, b) {
-    if (!arm(b, 'Confirmer')) return;
+    if (!arm(b, 'Confirmer la suppression')) return;
     const r = getRoute(ui.routeId); if (!r) return;
     if (live.routeId === r.id) stopLive(false);
-    remember(r, 'itinéraire « ' + r.name + ' » supprimé', 'route', true);
-    db.routes = db.routes.filter(x => x.id !== r.id);
-    if (db.active && db.active.routeId === r.id) db.active = null;
-    save(true); ui.view = 'home'; render(); undoToast('Itinéraire supprimé');
+    const c = routeComp(r);
+    remember('itinéraire « ' + routeTitle(r) + ' » supprimé', { routes: [r], deleted: true });
+    dropRoute(r.id); save(true);
+    if (c) { ui.view = 'company'; ui.companyId = c.id; } else ui.view = 'home';
+    render(); undoToast('Itinéraire supprimé');
   },
   closeSheet() { closeSheet(); }
 };
@@ -1383,17 +2049,19 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]');
   if (b) { if (b.disabled) return; const f = A[b.dataset.act]; if (f) f(b.dataset.arg, b, e); return; }
   if (e.target.id === 'sheet') closeSheet();
+  if (e.target.id === 'viewer') A.closeViewer();
 });
 $('#sheet-body').addEventListener('input', () => sheetSync());
+$('#sheet-body').addEventListener('change', e => { if (e.target.id === 'ph-in') { const f = e.target.files && e.target.files[0]; if (f) addPhoto(f); e.target.value = ''; } });
 $('#sheet-body').addEventListener('focusin', e => {
   const m = /^(\w+)-(km|m)$/.exec(e.target.id || ''), F = ui.form;
   if (m && F && F.pick && F.pick.includes(m[1]) && F.pickT !== m[1]) { F.pickT = m[1]; sheetSync(); }
 });
 $('#imp').addEventListener('change', e => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
-  const rd = new FileReader(); rd.onload = () => importBackup(String(rd.result)); rd.readAsText(f);
+  const rd = new FileReader(); rd.onload = () => importFile(String(rd.result)); rd.readAsText(f);
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (!$('#viewer').hidden) A.closeViewer(); else if (!$('#sheet').hidden) closeSheet(); } });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') save(true);
   else {
@@ -1410,10 +2078,15 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!hadCtrl) return;
     if (live.mode) { toast('Nouvelle version prête : elle s’ouvrira au prochain lancement.'); return; }
-    save(true); location.reload();
+    save(true).then(() => location.reload());
   });
 }
-render();
+(async () => {
+  await Store.init();
+  render();
+  askPersist();
+  setTimeout(gcPhotos, 8000);
+})();
 </script>
 </body>
 </html>
