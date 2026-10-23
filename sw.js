@@ -1,6 +1,6 @@
 /* PK Terrain — fonctionnement hors réseau.
    Change CACHE à chaque nouvelle version de l'appli pour forcer la mise à jour. */
-const CACHE = 'pkterrain-v3';
+const CACHE = 'pkterrain-v4';
 const FONTS = 'pkterrain-fonts';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './apple-touch-icon.png'];
 
