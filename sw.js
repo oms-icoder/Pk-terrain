@@ -1,11 +1,11 @@
 /* PK Terrain — fonctionnement hors réseau.
    Change CACHE à chaque nouvelle version de l'appli pour forcer la mise à jour. */
-const CACHE = 'pkterrain-v1';
+const CACHE = 'pkterrain-v2';
 const FONTS = 'pkterrain-fonts';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
