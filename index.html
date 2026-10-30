@@ -261,6 +261,19 @@ textarea{resize:vertical}
 .icode{font:700 18px/1 var(--f-display);font-variant-numeric:tabular-nums;color:var(--ink);overflow-wrap:anywhere}
 .rlist li.cls{display:grid;gap:6px}
 .clsbar{display:flex;justify-content:flex-end;gap:8px}
+.tabs.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tabs.two .tab{font-size:15px;padding:12px 4px}
+.vband{display:flex;align-items:center;gap:12px;background:var(--info-bg);border-radius:12px;padding:10px 10px 10px 14px}
+.vband .grow{flex:1;min-width:0;display:grid;gap:1px}
+.vband .eyebrow{margin:0}
+.vband b{font-weight:700;overflow-wrap:anywhere}
+.vband span{color:var(--muted);font-size:14px}
+.vnew{display:grid;gap:16px}
+.facts dd.pre{white-space:pre-line;font-weight:500}
+.onote.reco{color:var(--muted);font-weight:500}
+.sk-rem{fill:var(--ink);stroke:var(--surface);stroke-width:1.5}
+.lg.r{background:var(--ink);transform:rotate(45deg) scale(.85);border-radius:1px}
+pre.pv{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:400 13.5px/1.5 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--ink);background:var(--sunk);border-radius:12px;box-shadow:inset 0 0 0 1.5px var(--line);padding:12px;max-height:52vh;overflow:auto;user-select:text;-webkit-user-select:text}
 .levee{display:grid;gap:16px}
 .onote.done{color:var(--ok)}
 .sk-obs.done{fill:var(--ok)}
@@ -304,7 +317,7 @@ input[type=date]{min-height:50px}
 
 <script>
 'use strict';
-const APP_VERSION = '3.1';
+const APP_VERSION = '3.2';
 
 /*GEO-START*/
 const RE = 6371008.8, DEG = Math.PI / 180;
@@ -541,11 +554,76 @@ function unrecal(r, o) {
   r.pts = dedupe(pts);
   return null;
 }
+/* ----- Enregistrement : seul le trajet du véhicule allonge le tracé ----- */
+const V_ON = 2.5, V_OFF = 1.6;   // m/s : 9 km/h pour considérer que le véhicule roule ; sous 6 km/h, rien n'est ajouté
+const locXY = (ref, lat, lon) => [(lon - ref[LON]) * DEG * Math.cos(ref[LAT] * DEG) * RE, (lat - ref[LAT]) * DEG * RE];
+/* Derniers mètres du tracé, sans les points doublés par un recalage (le plus récent est gardé). */
+function tailPts(pts, len) {
+  let i = pts.length - 1, s = 0;
+  while (i > 0 && s < len) { s += segLen(pts[i - 1], pts[i]); i--; }
+  const out = [];
+  for (let k = Math.max(0, i); k < pts.length; k++) {
+    if (out.length && segLen(out[out.length - 1], pts[k]) < 0.05) out[out.length - 1] = pts[k];
+    else out.push(pts[k]);
+  }
+  return out;
+}
+/* Direction du déplacement sur les derniers `len` mètres (vecteur unitaire, en mètres locaux). */
+function headingOf(pts, len) {
+  const n = pts.length; if (n < 2) return null;
+  const L = pts[n - 1]; let i = n - 1, s = 0;
+  while (i > 0 && s < len) { s += segLen(pts[i - 1], pts[i]); i--; }
+  const v = locXY(L, pts[i][LAT], pts[i][LON]), m = Math.hypot(v[0], v[1]);
+  return m < 4 ? null : [-v[0] / m, -v[1] / m];
+}
+const newMotion = () => ({ win: [], moving: false, fastN: 0, slowSince: 0, v: null });
+/* Le véhicule roule-t-il ? Vitesse GPS si disponible, sinon vitesse moyenne sur au moins 4 s. */
+function motionStep(st, f, foot) {
+  st.win.push(f);
+  while (st.win.length > 2 && f.t - st.win[0].t > 15000) st.win.shift();
+  let ws = null;
+  for (let i = st.win.length - 2; i >= 0; i--) { const g = st.win[i], dt = (f.t - g.t) / 1000; if (dt >= 4) { ws = hav(g.lat, g.lon, f.lat, f.lon) / dt; break; } }
+  const v = f.spd != null ? f.spd : ws;
+  st.v = v;
+  if (foot) { st.moving = true; return st; }
+  st.fastN = v != null && v >= V_ON ? st.fastN + 1 : 0;
+  if (!st.moving) { if (st.fastN >= 2) { st.moving = true; st.slowSince = 0; } }
+  else if (v == null || v < V_OFF) { if (!st.slowSince) st.slowSince = f.t; if (f.t - st.slowSince >= 4000) { st.moving = false; st.slowSince = 0; } }
+  else st.slowSince = 0;
+  return st;
+}
+/* Une position GPS allonge-t-elle le tracé ? Renvoie 'ok' ou la raison du refus. */
+function recDecide(pts, f, st, o) {
+  if (f.acc > o.maxAcc) return 'acc';
+  if (!pts.length) return 'ok';
+  if (!o.foot && (!st.moving || st.v == null || st.v < V_OFF)) return 'arret';
+  const L = pts[pts.length - 1], d = hav(L[LAT], L[LON], f.lat, f.lon);
+  const dt = Math.max(0.001, (f.t - L[TS]) / 1000);
+  if (dt < 60 && d / dt > 45) return 'saut';
+  const tail = tailPts(pts, 600);
+  if (tail.length >= 2) { const p = project(tail, f.lat, f.lon); if (p && p.edge !== 'end' && p.off <= 25) return 'retour'; }
+  if (d < Math.max(o.minStep, Math.min(f.acc, 15) * 0.7)) return 'pres';
+  const h = headingOf(pts, 30);
+  if (h && d < 25) { const v = locXY(L, f.lat, f.lon); if (v[0] * h[0] + v[1] * h[1] < 0.5 * d) return 'cote'; }
+  return 'ok';
+}
+/* PK de la position actuelle pendant l'enregistrement, en véhicule ou à pied autour d'un arrêt. */
+function recHere(pts, f) {
+  const n = pts.length; if (!n) return null;
+  const L = pts[n - 1];
+  const tail = tailPts(pts, 1500);
+  if (tail.length >= 2) { const p = project(tail, f.lat, f.lon); if (p && p.edge !== 'end' && p.off <= 60) return { pk: p.pk, off: p.off, side: p.side, where: 'trace' }; }
+  const d = hav(L[LAT], L[LON], f.lat, f.lon);
+  if (d > 300) return { pk: L[PK], off: d, where: 'loin' };
+  const h = headingOf(pts, 30), v = locXY(L, f.lat, f.lon);
+  const fwd = h ? v[0] * h[0] + v[1] * h[1] : d;
+  return { pk: L[PK] + Math.max(0, fwd), off: Math.sqrt(Math.max(0, d * d - fwd * fwd)), where: 'devant' };
+}
 /*GEO-END*/
 
 /* ---------- Référentiels ---------- */
 const KEY = 'pkterrain.v1', UKEY = 'pkterrain.undo';
-const DEF = { maxAcc: 20, minStep: 5, sim: false };
+const DEF = { maxAcc: 20, minStep: 5, sim: false, foot: false };
 const TYPES = ['Nid-de-poule', 'Ravinement', 'Bourbier', 'Tôle ondulée', 'Défaut de profil', 'Compactage', 'Assainissement / fossé', 'Ouvrage (buse, dalot)', 'Autre'];
 const COTES = { G: 'Gauche', A: 'Axe', D: 'Droite', GD: 'Les deux côtés' };
 const GRAV = { 1: 'Mineure', 2: 'Moyenne', 3: 'Grave' };
@@ -556,9 +634,13 @@ const OETAT = { prevu: 'Prévu', cours: 'En cours', fini: 'Terminé', recu: 'Ré
 const OECLS = { prevu: 'neu', cours: 'warn', fini: 'ok', recu: 'ok' };
 const ITYPES = ['Réhabilitation', 'Entretien'];
 const MAXPH = 6;
+const VOBJ = ['Visite de chantier', 'Visite conjointe', 'Visite de réception', 'Reconnaissance', 'Autre'];
+const METEO = ['Ensoleillé', 'Nuageux', 'Pluvieux'];
+const THEMES = ['Avancement', 'Qualité', 'Personnel', 'Matériel', 'HSE', 'Environnement', 'Planning'];
+const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 const emptyRef = () => ({ profile: {}, mission: {}, companies: [], markets: [], postes: [], structures: [] });
-const blankDb = () => ({ routes: [], ref: emptyRef(), settings: Object.assign({}, DEF), active: null, lastBackup: null, migratedAt: null });
+const blankDb = () => ({ routes: [], visits: [], ref: emptyRef(), settings: Object.assign({}, DEF), active: null, lastBackup: null, migratedAt: null });
 let db = blankDb();
 let undo = null;
 
@@ -583,7 +665,17 @@ function normalize(d) {
   if (!ref.mission || typeof ref.mission !== 'object') ref.mission = {};
   d.ref = ref;
   d.routes = (Array.isArray(d.routes) ? d.routes : []).filter(r => r && r.id).map(normRoute);
+  d.visits = (Array.isArray(d.visits) ? d.visits : []).filter(v => v && v.id).map(normVisit);
   return d;
+}
+function normVisit(v) {
+  if (!Array.isArray(v.items)) v.items = [];
+  for (const it of v.items) { if (!Array.isArray(it.photos)) it.photos = []; if (!it.id) it.id = 'rem-' + uid(); }
+  if (!v.objet) v.objet = 'Visite de chantier';
+  if (!v.statut) v.statut = v.end ? 'terminee' : 'cours';
+  if (!v.date) v.date = todayISO();
+  if (!v.start) v.start = v.created || Date.now();
+  return v;
 }
 function readLS() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.routes)) return s; } catch (e) { }
@@ -610,7 +702,7 @@ const idbReq = q => new Promise((res, rej) => { q.onsuccess = () => res(q.result
 const metaDoc = () => ({ v: 3, ref: db.ref, settings: db.settings, active: db.active, lastBackup: db.lastBackup, migratedAt: db.migratedAt });
 
 const Store = {
-  mode: 'ls', idb: null, dirty: new Set(), gone: new Set(), timer: null, persisted: null, failed: false,
+  mode: 'ls', idb: null, dirty: new Set(), gone: new Set(), vdirty: new Set(), vgone: new Set(), timer: null, persisted: null, failed: false,
   async init() {
     try { this.idb = await idbOpen(); this.mode = 'idb'; } catch (e) { this.mode = 'ls'; }
     if (this.mode === 'idb') {
@@ -620,7 +712,8 @@ const Store = {
         if (meta) {
           const routes = await idbReq(st.objectStore('routes').getAll());
           const u = await idbReq(st.objectStore('meta').get('undo'));
-          db = normalize(Object.assign(blankDb(), meta, { routes }));
+          const visits = await idbReq(st.objectStore('meta').getAll(IDBKeyRange.bound('v:', 'v:\uffff')));
+          db = normalize(Object.assign(blankDb(), meta, { routes, visits }));
           undo = u || null;
           return;
         }
@@ -634,34 +727,40 @@ const Store = {
     if (this.mode === 'idb') {
       db.migratedAt = Date.now();
       db.routes.forEach(r => this.dirty.add(r.id));
+      db.visits.forEach(v => this.vdirty.add(v.id));
       await this.flush();          // la copie de l'ancienne version reste dans le stockage simple, intacte
     }
   },
   mark(id) { this.dirty.add(id); this.gone.delete(id); },
   drop(id) { this.gone.add(id); this.dirty.delete(id); },
+  vmark(id) { this.vdirty.add(id); this.vgone.delete(id); },
+  vdrop(id) { this.vgone.add(id); this.vdirty.delete(id); },
   schedule() { if (!this.timer) this.timer = setTimeout(() => { this.timer = null; this.flush(); }, 3000); },
   async flush() {
     clearTimeout(this.timer); this.timer = null;
     if (this.mode === 'idb') {
-      const ids = [...this.dirty], gone = [...this.gone];
-      this.dirty.clear(); this.gone.clear();
+      const ids = [...this.dirty], gone = [...this.gone], vids = [...this.vdirty], vgone = [...this.vgone];
+      this.dirty.clear(); this.gone.clear(); this.vdirty.clear(); this.vgone.clear();
       try {
         await new Promise((res, rej) => {
           const t = this.idb.transaction(['routes', 'meta'], 'readwrite'), rs = t.objectStore('routes');
           for (const id of ids) { const r = getRoute(id); if (r) rs.put(r); }
           for (const id of gone) rs.delete(id);
+          const ms = t.objectStore('meta');
+          for (const id of vids) { const v = getVisit(id); if (v) ms.put(v, 'v:' + id); }
+          for (const id of vgone) ms.delete('v:' + id);
           t.objectStore('meta').put(metaDoc(), 'state');
           t.objectStore('meta').put(undo || null, 'undo');
           t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
         });
         this.failed = false;
       } catch (e) {
-        ids.forEach(i => this.dirty.add(i)); gone.forEach(i => this.gone.add(i));
+        ids.forEach(i => this.dirty.add(i)); gone.forEach(i => this.gone.add(i)); vids.forEach(i => this.vdirty.add(i)); vgone.forEach(i => this.vgone.add(i));
         if (!this.failed) toast('Enregistrement impossible : la mémoire du téléphone est peut-être pleine.', 'bad');
         this.failed = true;
       }
     } else {
-      try { localStorage.setItem(KEY, JSON.stringify(Object.assign(metaDoc(), { routes: db.routes }))); }
+      try { localStorage.setItem(KEY, JSON.stringify(Object.assign(metaDoc(), { routes: db.routes, visits: db.visits }))); }
       catch (e) { toast('Mémoire pleine : exporte une sauvegarde puis supprime un ancien itinéraire.', 'bad'); }
       try { if (undo) localStorage.setItem(UKEY, JSON.stringify(undo)); else localStorage.removeItem(UKEY); } catch (e) { }
     }
@@ -714,6 +813,8 @@ function referencedPhotos(withUndo) {
   const s = new Set();
   const scan = routes => { for (const r of routes || []) for (const o of (r && r.obs) || []) for (const p of (o.photos || []).concat(o.photosApres || [])) s.add(p); };
   scan(db.routes);
+  for (const v of db.visits || []) for (const it of v.items || []) for (const p of it.photos || []) s.add(p);
+  if (withUndo && undo) for (const x of undo.visits || []) if (x.data) for (const it of x.data.items || []) for (const p of it.photos || []) s.add(p);
   if (withUndo && undo) {
     if (undo.obsOnly) for (const o of undo.routes[0].data || []) for (const p of (o.photos || []).concat(o.photosApres || [])) s.add(p);
     else scan(undo.routes.map(x => x.data).filter(Boolean));
@@ -758,13 +859,19 @@ const routesOf = m => db.ref && db.routes.filter(r => r.marketId === m.id).sort(
 const ouvsOf = r => db.ref.structures.filter(s => s.routeId === r.id).sort((a, b) => (a.pk ?? 1e12) - (b.pk ?? 1e12));
 const postesOf = m => db.ref.postes.filter(p => p.marketId === m.id);
 const refTouch = e => { e.updated = Date.now(); };
+const getVisit = id => db.visits.find(v => v.id === id);
+const vtouch = v => { v.updated = Date.now(); Store.vmark(v.id); };
+const visitObs = v => { const r = getRoute(v.routeId); return r ? r.obs.filter(o => o.visitId === v.id) : []; };
+const liveVisit = () => live.mode && live.visitId ? getVisit(live.visitId) : null;
+function visitCounts(v) { const o = visitObs(v), nc = o.filter(x => x.kind === 'obs').length, nb = o.length - nc, nr = v.items.length; return [nc ? plural(nc, 'constat', 'constats') : '', nr ? plural(nr, 'remarque', 'remarques') : '', nb ? plural(nb, 'borne', 'bornes') : ''].filter(Boolean).join(' · ') || 'Rien de noté pour l’instant'; }
 const stamp = () => Date.now();
 
 /* ---------- Annuler (une étape) ---------- */
 function remember(label, o) {
   o = o || {};
   const routes = (o.routes || []).map(r => typeof r === 'string' ? { id: r, data: null } : { id: r.id, data: clone(o.obsOnly ? r.obs : r) });
-  undo = { label, t: Date.now(), obsOnly: !!o.obsOnly, routes, ref: o.ref ? clone(db.ref) : null, deleted: !!o.deleted };
+  const visits = (o.visits || []).map(v => typeof v === 'string' ? { id: v, data: null } : { id: v.id, data: clone(v) });
+  undo = { label, t: Date.now(), obsOnly: !!o.obsOnly, routes, visits, ref: o.ref ? clone(db.ref) : null, deleted: !!o.deleted };
 }
 function clearUndo() { undo = null; Store.schedule(); }
 const undoFresh = () => undo && Date.now() - undo.t < 30 * 60 * 1000;
@@ -781,6 +888,12 @@ function doUndo() {
       if (i < 0) db.routes.push(r); else db.routes[i] = r;
       Store.mark(r.id);
     }
+  }
+  for (const x of u.visits || []) {
+    if (!x.data) { db.visits = db.visits.filter(v => v.id !== x.id); Store.vdrop(x.id); continue; }
+    const i = db.visits.findIndex(v => v.id === x.id), v = normVisit(x.data);
+    if (i < 0) db.visits.push(v); else db.visits[i] = v;
+    Store.vmark(v.id);
   }
   if (u.ref) db.ref = u.ref;
   save(true); closeSheet(); render(); toast('Annulé : ' + u.label);
@@ -824,8 +937,8 @@ const ICON = {
 };
 
 /* ---------- État de session ---------- */
-const ui = { view: 'home', routeId: null, companyId: null, marketId: null, tab: 'terrain', step: 100, coord: 'utm', form: null, lastPk: {}, pending: null };
-const live = { mode: null, routeId: null, paused: false, watchId: null, fix: null, prev: null, pk: null, proj: null, startedAt: 0, startPk: 0, startLen: 0, err: null, gap: null, wake: null, simTimer: null, simS: 0, lastSketch: 0 };
+const ui = { view: 'home', home: 'ent', routeId: null, companyId: null, marketId: null, visitId: null, visitRoute: null, tab: 'terrain', step: 100, coord: 'utm', form: null, lastPk: {}, pending: null };
+const live = { mode: null, routeId: null, visitId: null, paused: false, watchId: null, fix: null, pk: null, proj: null, here: null, why: null, ms: null, lastFixT: 0, startedAt: 0, startPk: 0, startLen: 0, err: null, gap: null, wake: null, simTimer: null, simS: 0, sim: null, lastSketch: 0 };
 const recording = r => live.mode === 'rec' && live.routeId === r.id;
 const isLiveOn = r => !!live.mode && live.routeId === r.id;
 
@@ -843,49 +956,68 @@ function onGeoErr(e) {
 }
 function onFix(pos) {
   const c = pos.coords;
-  const f = { lat: c.latitude, lon: c.longitude, acc: c.accuracy || 99, t: pos.timestamp || Date.now(), spd: (c.speed != null && c.speed >= 0) ? c.speed : null };
-  if (f.spd == null && live.fix) {
-    const dt = (f.t - live.fix.t) / 1000;
-    if (dt > 0.5 && dt < 10) f.spd = hav(live.fix.lat, live.fix.lon, f.lat, f.lon) / dt;
-  }
-  live.err = null; live.fix = f;
+  const f = { lat: c.latitude, lon: c.longitude, acc: c.accuracy || 99, t: pos.timestamp || Date.now(), spd: (c.speed != null && isFinite(c.speed) && c.speed >= 0) ? c.speed : null };
+  live.err = null;
+  const prevT = live.lastFixT; live.lastFixT = f.t; live.fix = f;
+  if (!live.ms) live.ms = newMotion();
+  motionStep(live.ms, f, !!db.settings.foot);
   const r = getRoute(live.routeId); if (!r) return;
-  if (live.mode === 'rec' && !live.paused) recordFix(r, f);
+  if (live.mode === 'rec') {
+    if (!live.paused) recordFix(r, f, prevT); else live.why = 'pause';
+    live.here = recHere(r.pts, f);
+    live.pk = r.pts.length ? (live.here ? live.here.pk : lastPk(r)) : r.pkStart;
+  }
   if (live.mode === 'loc') { live.proj = project(r.pts, f.lat, f.lon); live.pk = live.proj ? live.proj.pk : null; }
+  trackVisitRange();
   updateLive();
 }
-function recordFix(r, f) {
-  const S = db.settings, pts = r.pts;
-  if (f.acc > S.maxAcc) return;
-  if (!pts.length) { pts.push([f.lat, f.lon, r.pkStart, Math.round(f.acc), f.t]); touch(r); save(); return; }
-  const L = pts[pts.length - 1];
-  const d = hav(L[LAT], L[LON], f.lat, f.lon);
-  const dt = Math.max(0.001, (f.t - L[TS]) / 1000);
-  if (dt < 60 && d / dt > 45) return;                       // saut GPS aberrant (> 160 km/h)
-  const thr = Math.max(S.minStep, Math.min(f.acc, 15) * 0.7); // évite d'additionner le bruit à l'arrêt
-  if (d < thr) return;
-  if (dt > 30 && d > 100) live.gap = { d, dt, at: Date.now() };
-  pts.push([f.lat, f.lon, r1(L[PK] + d), Math.round(f.acc), f.t]);
+function recordFix(r, f, prevT) {
+  const S = db.settings, why = recDecide(r.pts, f, live.ms, { maxAcc: S.maxAcc, minStep: S.minStep, foot: !!S.foot });
+  live.why = why;
+  if (why !== 'ok') return;
+  if (!r.pts.length) { r.pts.push([f.lat, f.lon, r.pkStart, Math.round(f.acc), f.t]); touch(r); save(); return; }
+  const L = r.pts[r.pts.length - 1], d = hav(L[LAT], L[LON], f.lat, f.lon);
+  if (prevT && f.t - prevT > 30000 && d > 100) live.gap = { d, dt: (f.t - prevT) / 1000, at: Date.now() };
+  r.pts.push([f.lat, f.lon, r1(L[PK] + d), Math.round(f.acc), f.t]);
   touch(r); save();
 }
-function recPk(r) {
-  const n = r.pts.length; if (!n) return r.pkStart;
-  const L = r.pts[n - 1], f = live.fix;
-  if (!f || live.paused || f.acc > db.settings.maxAcc) return L[PK];
-  const d = hav(L[LAT], L[LON], f.lat, f.lon);
-  return d < 60 ? L[PK] + d : L[PK];
+/* Étendue des PK parcourus pendant la visite en cours. */
+function trackVisitRange() {
+  const V = liveVisit(); if (!V || live.pk == null) return;
+  if (live.mode === 'loc' && (!live.proj || live.proj.off > 60)) return;
+  if (live.mode === 'rec' && live.here && live.here.where === 'loin') return;
+  const pk = Math.round(live.pk);
+  let ch = false;
+  if (V.pkMin == null || pk < V.pkMin) { V.pkMin = pk; ch = true; }
+  if (V.pkMax == null || pk > V.pkMax) { V.pkMax = pk; ch = true; }
+  if (ch) { Store.vmark(V.id); Store.schedule(); }
 }
 function simPos(s) {
   const lat0 = 9.4925, lon0 = -7.5640;
   const north = s * 0.96, east = 140 * Math.sin(s / 520) + 35 * Math.sin(s / 130);
   return [lat0 + north / 111320, lon0 + east / (111320 * Math.cos(lat0 * DEG))];
 }
+/* Mode test : un véhicule fictif roule à ~30 km/h, s'arrête régulièrement ; le contrôleur descend et marche. */
 function startSim() {
-  if (live.mode === 'loc') live.simS = 0;
+  const S = live.sim = { s: live.mode === 'loc' ? 0 : (live.simS || 0), phase: 'drive', k: 0, walk: 0, next: 0 };
+  S.next = S.s + 350 + Math.random() * 200;
   const tick = () => {
-    live.simS += 7 + Math.random() * 3;
-    const p = simPos(live.simS), n = () => (Math.random() - 0.5) * 5 / 111320;
-    onFix({ coords: { latitude: p[0] + n(), longitude: p[1] + n(), accuracy: 3.5 + Math.random() * 5, speed: 8.3 }, timestamp: Date.now() });
+    let spd, s, off = 0;
+    if (S.phase === 'drive') {
+      S.s += 7 + Math.random() * 3; spd = 8 + Math.random(); s = S.s;
+      if (S.s >= S.next) { S.phase = 'stop'; S.k = 0; S.walk = 0; }
+    } else {
+      S.k++;
+      if (S.k <= 3) spd = 0.3;
+      else if (S.k <= 13) { S.walk += 1.3; spd = 1.3; }
+      else if (S.k <= 23) { S.walk = Math.max(0, S.walk - 1.3); spd = 1.3; }
+      else spd = 0.2;
+      if (S.k >= 26) { S.phase = 'drive'; S.next = S.s + 350 + Math.random() * 200; }
+      s = S.s + S.walk; off = S.walk > 0 ? 5 : 0;
+    }
+    live.simS = S.s;
+    const p = simPos(s), n = () => (Math.random() - 0.5) * 3 / 111320;
+    onFix({ coords: { latitude: p[0] + n(), longitude: p[1] + n() + off / (111320 * Math.cos(p[0] * DEG)), accuracy: 3.5 + Math.random() * 5, speed: spd }, timestamp: Date.now() });
   };
   live.simTimer = setInterval(tick, 1000);
   setTimeout(tick, 300);
@@ -893,10 +1025,10 @@ function startSim() {
 async function keepAwake() {
   try { if ('wakeLock' in navigator && document.visibilityState === 'visible') live.wake = await navigator.wakeLock.request('screen'); } catch (e) { }
 }
-function startLive(r, mode) {
+function startLive(r, mode, visitId) {
   stopLive(false);
-  Object.assign(live, { mode, routeId: r.id, paused: false, fix: null, pk: mode === 'rec' ? lastPk(r) : null, proj: null, err: null, gap: null, startedAt: Date.now(), startPk: lastPk(r), startLen: pathLen(r), lastSketch: 0 });
-  if (mode === 'rec') { db.active = { routeId: r.id }; if (undo && !undo.obsOnly && undoTouches(r.id)) undo = null; save(true); }
+  Object.assign(live, { mode, routeId: r.id, visitId: visitId || null, paused: false, fix: null, pk: mode === 'rec' ? lastPk(r) : null, proj: null, here: null, why: null, ms: newMotion(), lastFixT: 0, err: null, gap: null, startedAt: Date.now(), startPk: lastPk(r), startLen: pathLen(r), lastSketch: 0 });
+  if (mode === 'rec') { db.active = { routeId: r.id, visitId: visitId || null }; if (undo && !undo.obsOnly && undoTouches(r.id)) undo = null; save(true); }
   ui.view = 'route'; ui.routeId = r.id; ui.tab = 'terrain';
   startGeo(); keepAwake();
   render(); scrollTo(0, 0);
@@ -906,7 +1038,7 @@ function stopLive(doRender = true) {
   if (live.simTimer) { clearInterval(live.simTimer); live.simTimer = null; }
   if (live.wake) { live.wake.release().catch(() => { }); live.wake = null; }
   const wasRec = live.mode === 'rec';
-  live.mode = null; live.routeId = null; live.paused = false; live.fix = null;
+  live.mode = null; live.routeId = null; live.visitId = null; live.paused = false; live.fix = null; live.here = null; live.ms = null;
   if (wasRec) { db.active = null; save(true); }
   if (doRender) render();
 }
@@ -936,13 +1068,14 @@ function sketchSVG(r, o = {}) {
   const xy = [];
   for (let i = 0; i < pts.length; i += step) xy.push(X(pts[i][LAT], pts[i][LON]));
   const Lp = pts[pts.length - 1]; xy.push(X(Lp[LAT], Lp[LON]));
-  const obs = r.obs.filter(hasPos).map(x => ({ o: x, p: X(x.lat, x.lon) }));
+  const obs = (o.visit ? r.obs.filter(x => x.visitId === o.visit.id) : r.obs).filter(hasPos).map(x => ({ o: x, p: X(x.lat, x.lon) }));
+  const rems = o.visit ? o.visit.items.filter(hasPos).map(x => ({ o: x, p: X(x.lat, x.lon) })) : [];
   const ouv = ouvsOf(r).filter(hasPos).map(x => ({ o: x, p: X(x.lat, x.lon) }));
   const here = o.here ? X(o.here[0], o.here[1]) : null;
   const mk = o.mark != null ? pkToPos(pts, o.mark) : null, mark = mk ? X(mk.lat, mk.lon) : null;
   let mnx = Infinity, mny = Infinity, mxx = -Infinity, mxy = -Infinity;
   const ext = p => { mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]); mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]); };
-  xy.forEach(ext); obs.forEach(x => ext(x.p)); ouv.forEach(x => ext(x.p)); if (here) ext(here);
+  xy.forEach(ext); obs.forEach(x => ext(x.p)); rems.forEach(x => ext(x.p)); ouv.forEach(x => ext(x.p)); if (here) ext(here);
   const aw = W - 2 * P;
   const H = Math.round(Math.min(300, Math.max(168, aw * Math.max(mxy - mny, 30) / Math.max(mxx - mnx, 30) + 2 * P + B)));
   const ah = H - 2 * P - B;
@@ -964,6 +1097,7 @@ function sketchSVG(r, o = {}) {
     if (x.kind === 'borne') s += `<rect class="sk-borne" x="${f1(sx(p) - 4.5)}" y="${f1(sy(p) - 4.5)}" width="9" height="9" rx="1.5"/>`;
     else s += `<circle class="sk-obs ${x.statut === 'leve' ? 'done' : 'g' + x.grav}" cx="${f1(sx(p))}" cy="${f1(sy(p))}" r="${x.statut === 'leve' ? 4 : 5}"/>`;
   }
+  for (const { p } of rems) { const x = sx(p), y = sy(p); s += `<path class="sk-rem" d="M${f1(x)} ${f1(y - 6)}L${f1(x + 6)} ${f1(y)}L${f1(x)} ${f1(y + 6)}L${f1(x - 6)} ${f1(y)}Z"/>`; }
   s += `<circle class="sk-start" cx="${f1(sx(xy[0]))}" cy="${f1(sy(xy[0]))}" r="5.5"/>`;
   s += `<circle class="sk-end" cx="${f1(sx(xy[xy.length - 1]))}" cy="${f1(sy(xy[xy.length - 1]))}" r="5.5"/>`;
   if (here) s += `<circle class="sk-halo" cx="${f1(sx(here))}" cy="${f1(sy(here))}" r="13"/><circle class="sk-here" cx="${f1(sx(here))}" cy="${f1(sy(here))}" r="6"/>`;
@@ -974,6 +1108,7 @@ function sketchSVG(r, o = {}) {
   return s;
 }
 const LEGEND = '<div class="legend"><span><i class="lg s"></i>Début</span><span><i class="lg e"></i>Fin</span><span><i class="lg o"></i>À corriger</span><span><i class="lg d"></i>Corrigé</span><span><i class="lg b"></i>Borne</span><span><i class="lg t"></i>Ouvrage</span><span><i class="lg h"></i>Ta position</span></div>';
+const LEGEND_V = '<div class="legend"><span><i class="lg s"></i>Début</span><span><i class="lg e"></i>Fin</span><span><i class="lg o"></i>Constat</span><span><i class="lg r"></i>Remarque</span><span><i class="lg t"></i>Ouvrage</span><span><i class="lg h"></i>Ta position</span></div>';
 const liveHere = r => (isLiveOn(r) && live.fix) ? [live.fix.lat, live.fix.lon] : null;
 
 /* ---------- Vues ---------- */
@@ -983,6 +1118,7 @@ function render() {
   if (ui.view === 'route' && getRoute(ui.routeId)) html = routeHTML(getRoute(ui.routeId));
   else if (ui.view === 'company' && comp(ui.companyId)) html = companyHTML(comp(ui.companyId));
   else if (ui.view === 'bordereau' && mkt(ui.marketId)) html = bordereauHTML(mkt(ui.marketId));
+  else if (ui.view === 'visit' && getVisit(ui.visitId)) html = visitHTML(getVisit(ui.visitId));
   else { ui.view = 'home'; html = homeHTML(); }
   app.innerHTML = html;
   hydratePhotos(app);
@@ -1010,14 +1146,22 @@ function homeHTML() {
   if (undoFresh() && (undo.deleted || (undo.ref && !undo.routes.length))) h += undoBar('Dernière modification : ' + undo.label);
   const hasData = db.routes.some(r => r.pts.length || r.obs.length);
   if (hasData && (!db.lastBackup || daysAgo(db.lastBackup) >= 7)) h += `<div class="undo warnbar"><span>${db.lastBackup ? 'Dernière sauvegarde il y a ' + plural(daysAgo(db.lastBackup), 'jour', 'jours') + '.' : 'Aucune sauvegarde de tes données pour l’instant.'} Envoie-toi une copie par WhatsApp ou e-mail.</span><button class="btn ghost sm" data-act="backup" data-arg="1">Sauvegarder</button></div>`;
+  const openV = live.mode ? null : db.visits.filter(v => v.statut === 'cours' && getRoute(v.routeId)).sort((a, b) => (b.updated || 0) - (a.updated || 0))[0];
   if (live.mode && getRoute(live.routeId)) {
-    const r = getRoute(live.routeId);
-    h += `<section class="card"><h3>${live.mode === 'rec' ? 'Enregistrement en cours' : 'Repérage en cours'}</h3><p>${esc(routeTitle(r))} · PK ${fmtPK(live.pk ?? lastPk(r))}</p><button class="btn red" data-act="open" data-arg="${r.id}">Revenir au terrain</button></section>`;
-  } else if (db.active && getRoute(db.active.routeId)) {
+    const r = getRoute(live.routeId), V = liveVisit();
+    h += `<section class="card"><h3>${V ? 'Visite en cours' : live.mode === 'rec' ? 'Enregistrement en cours' : 'Repérage en cours'}</h3><p>${V ? esc(V.objet) + ' · ' : ''}${esc(routeTitle(r))} · PK ${fmtPK(live.pk ?? lastPk(r))}</p><button class="btn red" data-act="open" data-arg="${r.id}">Revenir au terrain</button></section>`;
+  } else if (openV) {
+    const r = getRoute(openV.routeId);
+    h += `<section class="card"><h3>Visite non terminée</h3><p>${esc(openV.objet)} du ${esc(fmtShort(openV.date))} · ${esc(routeTitle(r))} · ${esc(visitCounts(openV))}</p><div class="grid2"><button class="btn red" data-act="resumeVisit" data-arg="${openV.id}">Reprendre</button><button class="btn ghost" data-act="endVisit" data-arg="${openV.id}">Terminer</button></div></section>`;
+  }
+  if (!live.mode && db.active && getRoute(db.active.routeId) && !(openV && db.active.visitId === openV.id)) {
     const r = getRoute(db.active.routeId);
     h += `<section class="card"><h3>Enregistrement interrompu</h3><p>« ${esc(routeTitle(r))} » s’est arrêté au PK ${fmtPK(lastPk(r))}. Reprends depuis ce point, ou clos l’itinéraire.</p><div class="grid2"><button class="btn red" data-act="resume" data-arg="${r.id}">Reprendre</button><button class="btn ghost" data-act="dismissActive">Clore</button></div></section>`;
   }
   if (!P.nom) h += `<section class="card"><h3>Ton profil</h3><p>Ton nom et ta fonction figureront sur les fiches et les rapports.</p><button class="btn ghost" data-act="profile">Compléter mon profil</button></section>`;
+  const nv = db.visits.length;
+  h += `<nav class="tabs two" role="tablist"><button class="tab" role="tab" aria-selected="${ui.home !== 'vis'}" data-act="htab" data-arg="ent">Entreprises</button><button class="tab" role="tab" aria-selected="${ui.home === 'vis'}" data-act="htab" data-arg="vis">Visites${nv ? ' · ' + nv : ''}</button></nav>`;
+  if (ui.home === 'vis') return h + visitsListHTML();
   if (!companies.length) {
     h += `<section class="card"><h3>Tes entreprises</h3><p>Importe le paquet mission reçu (fichier .json) : il contient les entreprises, les marchés, les itinéraires et les bordereaux. Tu peux aussi ajouter une entreprise à la main.</p><div class="grid2"><button class="btn" data-act="import">${ICON.file}Importer</button><button class="btn ghost" data-act="newCompany">${ICON.plus}Entreprise</button></div></section>`;
   } else {
@@ -1111,24 +1255,38 @@ function terrainHTML(r) {
   const isLive = isLiveOn(r);
   const n = r.pts.length;
   let h = '';
+  const V = isLive ? liveVisit() : null;
+  if (V) h += `<section class="vband"><div class="grow"><p class="eyebrow">Visite en cours</p><b>${esc(V.objet)}${V.precision ? ' · ' + esc(V.precision) : ''}</b><span>${esc(visitCounts(V))}</span></div><button class="btn ghost sm" data-act="visit" data-arg="${V.id}">Détails</button></section>`;
   if (isLive) h += `<div class="status ${live.mode}" id="status"><span class="dot"></span><span id="status-t"></span></div>`;
   h += `<section class="borne" aria-live="polite"><div class="borne-cap">${esc(r.name)}</div><div class="borne-body"><div class="borne-k">PK</div><div class="borne-pk" id="pkv">${fmtPK(isLive ? (live.pk ?? lastPk(r)) : lastPk(r))}</div><div class="borne-sub" id="pksub">${isLive ? '' : (n ? 'Fin du tracé enregistré' : 'Aucun point enregistré')}</div></div></section>`;
   if (isLive) {
     const L = live.mode === 'rec' ? ['Précision', 'Vitesse', 'Parcouru', 'Durée'] : ['Précision', 'Vitesse', 'Écart à l’axe', 'Fin du tracé'];
     h += `<dl class="stats">${L.map((l, i) => `<div class="stat"><dt>${l}</dt><dd id="st-${i}">—</dd></div>`).join('')}</dl>`;
     h += `<div class="alerts" id="alerts"></div>`;
-    h += `<div class="grid2">
+    const rec = live.mode === 'rec';
+    h += V
+      ? `<div class="grid2">
+      <button class="btn red" data-act="addRem">${ICON.plus}Remarque</button>
       <button class="btn" data-act="obs">Constat</button>
       <button class="btn ghost" data-act="borne">Contrôle borne</button>
-      ${live.mode === 'rec'
+      ${rec ? `<button class="btn ghost" data-act="pause" id="b-pause">${live.paused ? 'Reprendre' : 'Pause'}</button>` : `<button class="btn ghost" data-act="pvPreview" data-arg="${V.id}">Texte du PV</button>`}
+      ${rec ? '' : `<button class="btn ghost span2" id="b-ext" data-act="extendTrack" hidden>${ICON.rec}Enregistrer la suite du tracé</button>`}
+      <button class="btn danger span2" data-act="endVisit">Terminer la visite</button>
+    </div>`
+      : `<div class="grid2">
+      <button class="btn" data-act="obs">Constat</button>
+      <button class="btn ghost" data-act="borne">Contrôle borne</button>
+      ${rec
         ? `<button class="btn ghost" data-act="pause" id="b-pause">${live.paused ? 'Reprendre' : 'Pause'}</button><button class="btn danger" data-act="finish">Terminer</button>`
         : `<button class="btn danger span2" data-act="stop">Arrêter le repérage</button>`}
     </div>`;
-    if (live.mode === 'loc') h += `<div id="near"></div>`;
-    h += `<div class="sketch"><div id="sketch">${sketchSVG(r, { here: liveHere(r) })}</div>${LEGEND}</div>`;
-    h += live.mode === 'rec'
-      ? `<p class="note">Mets en pause quand tu descends du véhicule pour marcher : les allers-retours autour d’un point s’ajouteraient au PK. Garde l’écran allumé, l’iPhone coupe le GPS des applis web quand il se verrouille.</p>`
-      : `<p class="note">Le PK est calculé en ramenant ta position sur le tracé enregistré. Garde l’écran allumé pendant le repérage.</p>`;
+    if (live.mode === 'loc' || V) h += `<div id="near"></div>`;
+    h += `<div class="sketch"><div id="sketch">${sketchSVG(r, { here: liveHere(r), visit: V })}</div>${V ? LEGEND_V : LEGEND}</div>`;
+    h += rec
+      ? (db.settings.foot
+        ? `<p class="note">Mode à pied : chaque déplacement allonge le tracé (Réglages › Enregistrement du tracé). Garde l’écran allumé : l’iPhone coupe le GPS des applis web quand il se verrouille.</p>`
+        : `<p class="note">Seul le trajet en véhicule (à partir de 9 km/h) allonge le tracé. À pied autour d’un arrêt, ou si le véhicule recule ou se gare, rien n’est ajouté : le PK affiché suit ta position. Garde l’écran allumé : l’iPhone coupe le GPS des applis web quand il se verrouille.</p>`)
+      : `<p class="note">Le PK est calculé en ramenant ta position sur le tracé enregistré${V ? ' ; les anciens constats ne s’affichent pas pendant la visite' : ''}. Garde l’écran allumé.</p>`;
   } else {
     const nObs = r.obs.filter(o => o.kind === 'obs').length;
     h += `<dl class="stats">
@@ -1138,8 +1296,8 @@ function terrainHTML(r) {
       <div class="stat"><dt>Ouvrages</dt><dd>${ouvsOf(r).length}</dd></div></dl>`;
     if (live.mode) h += `<p class="alert info">Une autre session est en cours. La démarrer ici arrêtera la précédente.</p>`;
     h += n >= 2
-      ? `<div class="grid2"><button class="btn span2" data-act="loc">${ICON.pin}Se repérer sur l’itinéraire</button><button class="btn ghost span2" data-act="rec">Continuer l’enregistrement depuis PK ${fmtPK(lastPk(r))}</button></div>`
-      : `<button class="btn red" data-act="rec">${ICON.rec}Démarrer au PK ${fmtPK(lastPk(r))}</button>${!n ? '<p class="note">Place-toi au début de l’itinéraire avant de démarrer. Le PK de départ se change dans l’onglet « Plus ».</p>' : ''}`;
+      ? `<div class="grid2"><button class="btn span2" data-act="loc">${ICON.pin}Se repérer sur l’itinéraire</button><button class="btn ghost span2" data-act="newVisit" data-arg="${r.id}">Démarrer une visite</button><button class="btn ghost span2" data-act="rec">Continuer l’enregistrement depuis PK ${fmtPK(lastPk(r))}</button></div>`
+      : `<button class="btn red" data-act="rec">${ICON.rec}Démarrer au PK ${fmtPK(lastPk(r))}</button><button class="btn ghost" data-act="newVisit" data-arg="${r.id}">Démarrer une visite</button>${!n ? '<p class="note">Place-toi au début de l’itinéraire avant de démarrer. Le PK de départ se change dans l’onglet « Plus ».</p>' : ''}`;
     h += `<div class="sketch"><div id="sketch">${sketchSVG(r)}</div>${n >= 2 ? LEGEND : ''}</div>`;
     if (n >= 2) h += `<button class="btn ghost" data-act="trackEdit">${ICON.edit}Corriger le tracé</button><p class="note">Couper le début ou la fin, supprimer un détour, changer le PK de départ ou inverser le sens du chaînage.</p>`;
   }
@@ -1149,12 +1307,15 @@ function terrainHTML(r) {
 function updateLive() {
   if (!live.mode || ui.view !== 'route' || ui.tab !== 'terrain' || live.routeId !== ui.routeId) return;
   const r = getRoute(live.routeId); if (!r || !$('#pkv')) return;
-  const f = live.fix, S = db.settings;
-  if (live.mode === 'rec') live.pk = recPk(r);
+  const f = live.fix, S = db.settings, V = liveVisit(), w = live.why, hr = live.here;
+  if (live.pk == null && live.mode === 'rec') live.pk = lastPk(r);
   $('#pkv').textContent = fmtPK(live.pk);
   let sub = '', cls = '';
+  const still = live.mode === 'rec' && !live.paused && (w === 'arret' || w === 'retour' || w === 'cote');
   if (live.mode === 'rec') {
     if (!r.pts.length) sub = 'En attente d’un point GPS précis pour fixer le PK ' + fmtPK(r.pkStart);
+    else if (live.paused) sub = 'En pause : rien n’est ajouté au tracé';
+    else if (still) { sub = w === 'retour' ? 'Sur le tracé déjà parcouru : rien n’est ajouté' : 'À l’arrêt : la marche n’est pas comptée'; if (hr && hr.off > 8) sub += ' · à ' + nf0.format(hr.off) + ' m de l’axe'; }
     else { const nx = Math.floor(live.pk / 100 + 1e-9) * 100 + 100; sub = 'Prochain hectomètre PK ' + fmtPK(nx) + ' dans ' + nf0.format(nx - live.pk) + ' m'; }
   } else {
     const p = live.proj;
@@ -1167,11 +1328,11 @@ function updateLive() {
     else sub = 'À ' + nf0.format(p.off) + ' m de l’axe, côté ' + (p.side === 'G' ? 'gauche' : 'droit');
   }
   const se = $('#pksub'); se.textContent = sub; se.className = 'borne-sub ' + cls;
-  $('#status').className = 'status ' + (live.paused ? 'pause' : live.mode);
-  $('#status-t').textContent = live.mode === 'loc' ? 'Repérage' : live.paused ? 'En pause' : 'Enregistrement';
+  $('#status').className = 'status ' + (live.paused || still ? 'pause' : live.mode);
+  $('#status-t').textContent = (V ? 'Visite · ' : '') + (live.mode === 'loc' ? 'Repérage' : live.paused ? 'En pause' : still ? (w === 'retour' ? 'Retour sur le tracé' : 'À l’arrêt') : 'Enregistrement');
   const q = !f ? '' : f.acc <= 10 ? 'ok' : f.acc <= S.maxAcc ? 'warn' : 'bad';
   $('#st-0').innerHTML = f ? `<i class="q ${q}"></i>±${nf0.format(f.acc)} m` : '—';
-  $('#st-1').textContent = f && f.spd != null ? nf0.format(f.spd * 3.6) + ' km/h' : '—';
+  $('#st-1').textContent = live.ms && live.ms.v != null ? nf0.format(live.ms.v * 3.6) + ' km/h' : '—';
   if (live.mode === 'rec') {
     $('#st-2').textContent = fmtDist(Math.max(0, pathLen(r) - live.startLen));
     $('#st-3').textContent = fmtDur(Date.now() - live.startedAt);
@@ -1185,13 +1346,14 @@ function updateLive() {
   else if (live.mode === 'rec' && f.acc > S.maxAcc) al.push(['warn', 'Signal imprécis (±' + nf0.format(f.acc) + ' m). Les points sont ignorés tant que la précision dépasse ±' + S.maxAcc + ' m.']);
   else if (live.mode === 'loc' && f.acc > 30) al.push(['warn', 'Signal imprécis (±' + nf0.format(f.acc) + ' m) : le PK affiché peut être décalé.']);
   if (live.gap && Date.now() - live.gap.at < 120000) al.push(['warn', 'Coupure GPS de ' + fmtDur(live.gap.dt * 1000) + ' : ' + fmtDist(live.gap.d) + ' comptés en ligne droite. Contrôle au prochain repère.']);
-  if (live.paused) al.push(['info', 'En pause : le PK ne bouge plus. Reprends quand tu remontes dans le véhicule.']);
+  if (live.paused) al.push(['info', 'En pause : le tracé n’avance plus. Reprends quand tu repars.']);
   if (S.sim) al.push(['info', 'Mode test : la position est simulée.']);
   const ah = al.map(([c, t]) => `<p class="alert ${c}">${esc(t)}</p>`).join(''), ae = $('#alerts');
   if (ae._h !== ah) { ae.innerHTML = ah; ae._h = ah; }
   const bp = $('#b-pause'); if (bp) bp.textContent = live.paused ? 'Reprendre' : 'Pause';
-  const nr = $('#near'); if (nr) { const nh = live.pk != null ? nearHTML(r, live.pk) : ''; if (nr._h !== nh) { nr.innerHTML = nh; nr._h = nh; hydratePhotos(nr); } }
-  if (Date.now() - live.lastSketch > 2500) { $('#sketch').innerHTML = sketchSVG(r, { here: liveHere(r) }); $('#route-sub').textContent = routeSub(r); live.lastSketch = Date.now(); }
+  const be = $('#b-ext'); if (be) be.hidden = !(live.proj && live.proj.edge === 'end' && live.proj.off > 30);
+  const nr = $('#near'); if (nr) { const nh = live.pk != null ? nearHTML(r, live.pk, V) : ''; if (nr._h !== nh) { nr.innerHTML = nh; nr._h = nh; hydratePhotos(nr); } }
+  if (Date.now() - live.lastSketch > 2500) { $('#sketch').innerHTML = sketchSVG(r, { here: liveHere(r), visit: V }); $('#route-sub').textContent = routeSub(r); live.lastSketch = Date.now(); }
 }
 
 const phCount = o => { const n = (o.photos || []).length + (o.photosApres || []).length; return n ? plural(n, 'photo', 'photos') : ''; };
@@ -1206,13 +1368,14 @@ function obsRow(o, delta) {
   const d = delta != null ? `<small>${fmtSigned(delta)}</small>` : '';
   const manual = o.src === 'manuel' ? 'saisi après coup' : '';
   const nopos = hasPos(o) ? '' : 'sans coordonnées';
+  const vv = o.visitId && ui.view !== 'visit' ? getVisit(o.visitId) : null, vis = vv ? 'visite du ' + fmtShort(vv.date) : '';
   const thid = (o.statut === 'leve' && o.photosApres && o.photosApres[0]) || (o.photos && o.photos[0]);
   const th = thid ? `<span class="othumb"><img data-photo="${thid}" alt=""></span>` : '';
   if (o.kind === 'borne') {
     const meta = ['PK GPS ' + fmtPK(o.pk), o.recale ? 'chaînage recalé ici' : '', manual, nopos, phCount(o)].filter(Boolean).join(' · ');
     return `<button class="orow" data-act="editObs" data-arg="${o.id}"><span class="opk">${fmtPK(o.pkB)}${d}</span><span><span class="otop"><span class="otype">Borne</span><span class="pill ${ecCls(o.ec)}">Écart ${fmtSigned(o.ec)}</span></span><span class="ometa">${esc(meta)}</span>${o.note ? `<span class="onote">${esc(o.note)}</span>` : ''}</span>${th}</button>`;
   }
-  const meta = [COTES[o.cote] || '', o.len ? 'sur ' + nf0.format(o.len) + ' m' : '', manual, nopos, phCount(o)].filter(Boolean).join(' · ');
+  const meta = [COTES[o.cote] || '', o.len ? 'sur ' + nf0.format(o.len) + ' m' : '', vis, manual, nopos, phCount(o)].filter(Boolean).join(' · ');
   return `<button class="orow" data-act="editObs" data-arg="${o.id}"><span class="opk">${fmtPK(o.pk)}${d}</span><span><span class="otop"><span class="otype">${esc(o.type)}</span><span class="pill ${GCLS[o.grav]}">${GRAV[o.grav]}</span>${statusPill(o)}</span><span class="ometa">${esc(meta)}</span>${o.note ? `<span class="onote">${esc(o.note)}</span>` : ''}${o.statut === 'leve' && o.noteLevee ? `<span class="onote done">Levée : ${esc(o.noteLevee)}</span>` : ''}</span>${th}</button>`;
 }
 function ouvRow(s, delta) {
@@ -1220,13 +1383,131 @@ function ouvRow(s, delta) {
   const meta = [s.dims, s.travaux, hasPos(s) ? '' : 'sans coordonnées'].filter(Boolean).join(' · ');
   return `<button class="orow" data-act="editOuv" data-arg="${s.id}"><span class="opk">${s.pk != null ? fmtPK(s.pk) : '—'}${d}</span><span><span class="otop"><span class="otype">${esc(s.code ? s.code + ' · ' : '')}${esc(s.type || 'Ouvrage')}</span><span class="pill ${OECLS[s.etat] || 'neu'}">${OETAT[s.etat] || 'Prévu'}</span></span><span class="ometa">${esc(meta)}</span>${s.note ? `<span class="onote">${esc(s.note)}</span>` : ''}</span></button>`;
 }
-function nearHTML(r, pk) {
-  const list = r.obs.map(o => ({ o, d: obsPk(o) - pk, k: 'o' })).concat(ouvsOf(r).filter(s => s.pk != null).map(s => ({ o: s, d: s.pk - pk, k: 's' })))
+function remRow(it, delta) {
+  const d = delta != null ? `<small>${fmtSigned(delta)}</small>` : '';
+  const th = it.photos && it.photos[0] ? `<span class="othumb"><img data-photo="${it.photos[0]}" alt=""></span>` : '';
+  const meta = [it.src === 'manuel' ? 'saisie après coup' : '', hasPos(it) ? '' : 'sans coordonnées', it.photos.length ? plural(it.photos.length, 'photo', 'photos') : ''].filter(Boolean).join(' · ');
+  return `<button class="orow" data-act="editRem" data-arg="${it.id}"><span class="opk">${fmtPK(it.pk)}${d}</span><span><span class="otop"><span class="otype">Remarque</span>${it.theme ? `<span class="pill neu">${esc(it.theme)}</span>` : ''}</span>${meta ? `<span class="ometa">${esc(meta)}</span>` : ''}${it.texte ? `<span class="onote">${esc(it.texte)}</span>` : ''}${it.reco ? `<span class="onote reco">Recommandation : ${esc(it.reco)}</span>` : ''}</span>${th}</button>`;
+}
+function nearHTML(r, pk, V) {
+  const obs = V ? r.obs.filter(o => o.visitId === V.id) : r.obs;
+  const list = obs.map(o => ({ o, d: obsPk(o) - pk, k: 'o' }))
+    .concat(V ? V.items.map(i => ({ o: i, d: i.pk - pk, k: 'r' })) : [])
+    .concat(ouvsOf(r).filter(s => s.pk != null).map(s => ({ o: s, d: s.pk - pk, k: 's' })))
     .filter(x => Math.abs(x.d) <= 300).sort((a, b) => Math.abs(a.d) - Math.abs(b.d)).slice(0, 5);
   if (!list.length) return '';
-  return `<h3 class="h3">À moins de 300 m</h3>${list.some(x => x.k === 'o' && isOpen(x.o)) ? '<p class="note">Touche un constat pour indiquer s’il est corrigé.</p>' : ''}<ul class="olist">${list.map(x => `<li>${x.k === 's' ? ouvRow(x.o, x.d) : obsRow(x.o, x.d)}</li>`).join('')}</ul>`;
+  return `<h3 class="h3">À moins de 300 m</h3>${!V && list.some(x => x.k === 'o' && isOpen(x.o)) ? '<p class="note">Touche un constat pour indiquer s’il est corrigé.</p>' : ''}<ul class="olist">${list.map(x => `<li>${x.k === 's' ? ouvRow(x.o, x.d) : x.k === 'r' ? remRow(x.o, x.d) : obsRow(x.o, x.d)}</li>`).join('')}</ul>`;
 }
 
+/* ---------- Visites ---------- */
+const hm = t => { const d = new Date(t); return pad2(d.getHours()) + ' h ' + pad2(d.getMinutes()); };
+const hmv = t => { if (!t) return ''; const d = new Date(t); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
+const monthLabel = iso => { const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? '' : d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }); };
+const visitSpan = v => v.pkMin != null && v.pkMax != null ? 'PK ' + fmtPK(v.pkMin) + ' → ' + fmtPK(v.pkMax) + ' (' + fmtDist(v.pkMax - v.pkMin) + ')' : '';
+function visitItems(v) {
+  const r = getRoute(v.routeId);
+  return (r ? r.obs.filter(o => o.visitId === v.id).map(o => ({ k: 'o', o, pk: obsPk(o) })) : []).concat(v.items.map(i => ({ k: 'r', o: i, pk: i.pk }))).sort((a, b) => a.pk - b.pk);
+}
+function visitCard(v) {
+  const r = getRoute(v.routeId), c = r && routeComp(r), d = new Date(v.date + 'T12:00:00');
+  const st = live.mode && live.visitId === v.id ? '<span class="pill warn">En cours</span>' : v.statut === 'cours' ? '<span class="pill warn">Non terminée</span>' : '';
+  return `<li><button class="rcard" data-act="visit" data-arg="${v.id}"><span class="mini" aria-hidden="true"><i></i><b>${isNaN(d) ? '—' : d.getDate()}</b><small>${isNaN(d) ? '' : MOIS[d.getMonth()]}</small></span><span><span class="t">${esc(v.objet)}${v.precision ? ' · ' + esc(v.precision) : ''}</span><br><span class="m">${esc([compName(c), r ? routeTitle(r) : 'itinéraire supprimé'].filter(Boolean).join(' · '))}</span><br><span class="m">${esc(visitCounts(v))}</span>${st ? '<br>' + st : ''}</span>${ICON.next}</button></li>`;
+}
+function visitsListHTML() {
+  const vs = db.visits.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (b.start || 0) - (a.start || 0));
+  let h = `<button class="btn red" data-act="newVisit">${ICON.plus}Nouvelle visite</button>`;
+  if (!vs.length) return h + `<section class="card"><h3>Visites de terrain</h3><ol class="steps">
+      <li><div><b>Choisis l’itinéraire</b><span>Un itinéraire déjà enregistré : l’appli te repère sur son tracé, sans afficher les anciens constats. Ou un nouveau : son tracé est enregistré pendant la visite.</span></div></li>
+      <li><div><b>Note à chaque arrêt</b><span>« Remarque » et « Constat » prennent le PK où tu te trouves, avec photos.</span></div></li>
+      <li><div><b>Termine et partage</b><span>L’appli produit le texte du PV : informations, participants, constats et remarques par PK, recommandations.</span></div></li>
+    </ol></section>`;
+  let cur = null, out = '';
+  for (const v of vs) { const k = monthLabel(v.date); if (k !== cur) { if (cur !== null) out += '</ul>'; out += `<h3 class="h3">${esc(k)}</h3><ul class="rlist">`; cur = k; } out += visitCard(v); }
+  return h + out + '</ul>';
+}
+function visitHTML(v) {
+  const r = getRoute(v.routeId), c = r && routeComp(r);
+  const isL = !!live.mode && live.visitId === v.id;
+  const sub = [compName(c), r ? routeTitle(r) : 'Itinéraire supprimé'].filter(Boolean).join(' · ');
+  let h = topBar('visits', '', `<p class="eyebrow">${esc(fmtDay(v.date))}</p><h2>${esc(v.objet)}${v.precision ? ' · ' + esc(v.precision) : ''}</h2>`, esc(sub), `<button class="icon-btn" data-act="editVisit" data-arg="${v.id}" aria-label="Modifier la visite">${ICON.edit}</button>`);
+  if (undoFresh() && !undo.deleted && (undo.visits || []).some(x => x.id === v.id)) h += undoBar('Dernière modification : ' + undo.label);
+  if (!r) h += `<p class="alert warn">L’itinéraire de cette visite a été supprimé. Les remarques restent consultables et le texte du PV peut toujours être produit.</p>`;
+  if (isL) h += `<section class="vband"><div class="grow"><p class="eyebrow">Visite en cours</p><b>PK ${fmtPK(live.pk ?? lastPk(r))}</b></div><button class="btn red sm" data-act="open" data-arg="${r.id}">Revenir au terrain</button></section>`;
+  else if (v.statut === 'cours' && r) h += `<div class="grid2"><button class="btn red" data-act="resumeVisit" data-arg="${v.id}">Reprendre la visite</button><button class="btn ghost" data-act="endVisit" data-arg="${v.id}">Terminer la visite</button></div>`;
+  const facts = [['Horaire', v.end ? 'de ' + hm(v.start) + ' à ' + hm(v.end) : 'depuis ' + hm(v.start)], ['Section parcourue', visitSpan(v)], ['Météo', v.meteo], ['Participants', v.participants], ['Observations générales', v.note]].filter(x => x[1]);
+  h += `<section class="card"><dl class="facts one">${facts.map(([k, x]) => `<div><dt>${k}</dt><dd class="pre">${esc(x)}</dd></div>`).join('')}</dl>${!v.participants ? '<p class="hint">Ajoute les participants avec le crayon en haut : ils figureront dans le texte du PV.</p>' : ''}</section>`;
+  h += `<button class="btn" data-act="pvPreview" data-arg="${v.id}">${ICON.file}Texte du PV</button>`;
+  const its = visitItems(v);
+  h += `<h3 class="h3">Constats et remarques · ${its.length}</h3>`;
+  h += its.length ? `<ul class="olist">${its.map(x => `<li>${x.k === 'r' ? remRow(x.o) : obsRow(x.o)}</li>`).join('')}</ul><p class="note">Touche une ligne pour la modifier ou la supprimer.</p>` : `<p class="note">Rien n’a encore été noté pendant cette visite.</p>`;
+  if (r) h += `<div class="grid2"><button class="btn ghost" data-act="addRemV" data-arg="${v.id}">${ICON.plus}Remarque</button><button class="btn ghost" data-act="addObsV" data-arg="${v.id}">${ICON.plus}Constat</button></div>`;
+  if (r && r.pts.length >= 2) h += `<div class="sketch"><div>${sketchSVG(r, { visit: v })}</div>${LEGEND_V.replace('<span><i class="lg h"></i>Ta position</span>', '')}</div>`;
+  h += `<button class="btn danger" data-act="delVisit" data-arg="${v.id}">Supprimer la visite</button>`;
+  return h;
+}
+const coteTxt = c => ({ G: 'côté gauche', D: 'côté droit', A: 'sur l’axe', GD: 'des deux côtés' }[c] || '');
+/* Texte du PV de visite : tout ce qui a été noté, trié par PK. */
+function pvText(v) {
+  const r = getRoute(v.routeId), c = r && routeComp(r), m = r && routeMkt(r), P = db.ref.profile || {}, M = db.ref.mission || {};
+  const ob = r ? r.obs.filter(o => o.visitId === v.id) : [];
+  const cons = ob.filter(o => o.kind === 'obs').sort((a, b) => a.pk - b.pk), bor = ob.filter(o => o.kind === 'borne').sort((a, b) => a.pkB - b.pkB);
+  const rems = v.items.slice().sort((a, b) => a.pk - b.pk);
+  const z = r && r.pts.length ? toUTM(r.pts[0][LAT], r.pts[0][LON]).zone : null;
+  const pos = o => { if (!hasPos(o)) return ''; const u = toUTM(o.lat, o.lon, z || undefined); return 'X ' + nf0.format(u.x) + ' ; Y ' + nf0.format(u.y) + ' (UTM ' + u.zone + u.hemi + ')'; };
+  const L = [], ln = (...a) => { L.push(...a); };
+  let n = 0; const sec = t => { n++; ln('', n + '. ' + t); };
+  const day = new Date(v.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  ln('PROJET DE CONNECTIVITÉ INCLUSIVE ET D’INFRASTRUCTURES RURALES EN CÔTE D’IVOIRE (PCR-CI)');
+  const mis = [M.nom, M.bureau].filter(Boolean).join(' – '); if (mis) ln(mis);
+  ln('', 'ÉLÉMENTS POUR LE PV DE VISITE DE TERRAIN', (v.objet + (v.precision ? ' – ' + v.precision : '')).toUpperCase());
+  sec('INFORMATIONS GÉNÉRALES');
+  ln('Date : ' + day);
+  ln('Horaire : ' + (v.end ? 'de ' + hm(v.start) + ' à ' + hm(v.end) : 'à partir de ' + hm(v.start)));
+  if (c) ln('Entreprise : ' + (c.nom && c.nom !== c.sigle && !c.nom.includes(c.sigle) ? c.sigle + ' (' + c.nom + ')' : (c.nom || compName(c))));
+  if (m) ln('Marché : ' + [mktLabel(m), m.numero ? 'n° ' + m.numero : ''].filter(Boolean).join(' – '));
+  ln('Itinéraire : ' + (r ? routeTitle(r) + (r.longueurKm ? ' (' + nf1.format(r.longueurKm) + ' km prévus)' : '') : 'itinéraire supprimé'));
+  if (v.pkMin != null && v.pkMax != null) ln('Section parcourue : du PK ' + fmtPK(v.pkMin) + ' au PK ' + fmtPK(v.pkMax) + ' (' + fmtDist(v.pkMax - v.pkMin) + ')');
+  if (v.meteo) ln('Météo : ' + v.meteo);
+  if (M.financement) ln('Financement : ' + M.financement);
+  if (P.nom) ln('Contrôleur : ' + P.nom + (P.fonction ? ', ' + P.fonction : ''));
+  sec('PARTICIPANTS');
+  const parts = String(v.participants || '').split(/\n+/).map(x => x.trim()).filter(Boolean);
+  const nom1 = P.nom ? P.nom.split(/\s+/)[0].toLowerCase() : '';
+  if (P.nom && !parts.some(x => x.toLowerCase().includes(nom1))) parts.unshift(P.nom + (P.fonction ? ', ' + P.fonction : '') + (M.bureau ? ', ' + M.bureau : ''));
+  ln(...(parts.length ? parts.map(x => '- ' + x) : ['- À compléter']));
+  sec('CONSTATS (' + cons.length + ')');
+  if (!cons.length) ln('Aucun constat relevé pendant la visite.');
+  cons.forEach((o, i) => {
+    ln(n + '.' + (i + 1) + ' PK ' + fmtPK(o.pk) + ' – ' + o.type + ' – gravité ' + (GRAV[o.grav] || '').toLowerCase() + (coteTxt(o.cote) ? ' – ' + coteTxt(o.cote) : '') + (o.len ? ' – sur ' + nf0.format(o.len) + ' m' : ''));
+    if (o.note) ln('    Observation : ' + o.note);
+    ln('    Statut : ' + (o.statut === 'leve' ? 'corrigé' + (o.dateLevee ? ' le ' + fmtDay(o.dateLevee) : '') + (o.noteLevee ? ' (' + o.noteLevee + ')' : '') : 'à corriger'));
+    if (pos(o)) ln('    Position : ' + pos(o));
+    const np = (o.photos || []).length + (o.photosApres || []).length; if (np) ln('    Photos : ' + np);
+  });
+  sec('REMARQUES ET OBSERVATIONS (' + rems.length + ')');
+  if (!rems.length) ln('Aucune remarque.');
+  rems.forEach((it, i) => {
+    ln(n + '.' + (i + 1) + ' PK ' + fmtPK(it.pk) + (it.theme ? ' – ' + it.theme : ''));
+    if (it.texte) ln('    Observation : ' + it.texte);
+    if (it.reco) ln('    Recommandation : ' + it.reco);
+    if (pos(it)) ln('    Position : ' + pos(it));
+    if ((it.photos || []).length) ln('    Photos : ' + it.photos.length);
+  });
+  if (bor.length) { sec('CONTRÔLES DE BORNES (' + bor.length + ')'); bor.forEach(o => ln('- Borne PK ' + fmtPK(o.pkB) + ' : PK GPS ' + fmtPK(o.pk) + ', écart ' + fmtSigned(o.ec) + (o.note ? ' (' + o.note + ')' : ''))); }
+  if (v.note) { sec('OBSERVATIONS GÉNÉRALES'); ln(v.note); }
+  sec('RECOMMANDATIONS');
+  const recos = rems.filter(it => it.reco).map(it => ({ pk: it.pk, t: it.reco }))
+    .concat(cons.filter(isOpen).map(o => ({ pk: o.pk, t: o.type + ' (' + (GRAV[o.grav] || '').toLowerCase() + ') à corriger' + (o.note ? ' : ' + o.note : '') })))
+    .sort((a, b) => a.pk - b.pk);
+  ln(...(recos.length ? recos.map(x => '- PK ' + fmtPK(x.pk) + ' : ' + x.t) : ['Aucune recommandation particulière.']));
+  sec('SYNTHÈSE');
+  const g = k => cons.filter(o => o.grav == k).length, gr = [g(3) ? plural(g(3), 'grave', 'graves') : '', g(2) ? plural(g(2), 'moyen', 'moyens') : '', g(1) ? plural(g(1), 'mineur', 'mineurs') : ''].filter(Boolean).join(', ');
+  ln(plural(cons.length, 'constat relevé', 'constats relevés') + (gr ? ' (' + gr + ')' : '') + ', ' + plural(rems.length, 'remarque', 'remarques') + (bor.length ? ', ' + plural(bor.length, 'contrôle de borne', 'contrôles de bornes') : '') + '.');
+  const nph = cons.reduce((a, o) => a + (o.photos || []).length + (o.photosApres || []).length, 0) + rems.reduce((a, it) => a + (it.photos || []).length, 0);
+  if (nph) ln(plural(nph, 'photo prise', 'photos prises') + (nph > 1 ? ' : elles sont' : ' : elle est') + ' dans l’appli et dans la sauvegarde avec photos.');
+  ln('', 'Texte produit par PK Terrain le ' + new Date().toLocaleDateString('fr-FR') + ' à ' + hm(Date.now()) + '.');
+  return L.join('\n').replace(/[\u202f\u00a0]/g, ' ');
+}
 function obsHTML(r) {
   const list = [...r.obs].sort((a, b) => obsPk(a) - obsPk(b));
   const bor = list.filter(o => o.kind === 'borne'), open = list.filter(isOpen), done = list.filter(isDone);
@@ -1308,7 +1589,7 @@ function openSheet(html) {
   $('#sheet-body').innerHTML = html; $('#sheet').hidden = false;
   const ps = $('#pick-svg'); if (ps) ps.addEventListener('click', onPick);
   hydratePhotos($('#sheet-body'));
-  const f = $('#sheet-body').querySelector('input[type=text][data-focus]'); if (f && !f.value) setTimeout(() => f.focus(), 50);
+  const f = $('#sheet-body').querySelector('input[type=text][data-focus], textarea[data-focus]'); if (f && !f.value) setTimeout(() => f.focus(), 50);
 }
 function closeSheet() { $('#sheet').hidden = true; $('#sheet-body').innerHTML = ''; ui.form = null; pickFrame = null; }
 const head = t => `<div class="sh-head"><h2>${t}</h2><button class="icon-btn" data-act="closeSheet" aria-label="Fermer">${ICON.close}</button></div>`;
@@ -1470,6 +1751,67 @@ function paquetSheet(pq) {
 }
 
 /* Constat : mode 'live' (sur le terrain), 'new' (après coup) ou 'edit'. */
+function itiOptions(cur) {
+  const opt = r => `<option value="${r.id}"${r.id === cur ? ' selected' : ''}>${esc(routeTitle(r))}${r.pts.length >= 2 ? '' : ' (sans tracé)'}</option>`;
+  const byCode = (a, b) => String(a.code || a.name).localeCompare(String(b.code || b.name), 'fr', { numeric: true });
+  let h = '';
+  for (const c of db.ref.companies.filter(c => !c.archived).sort((a, b) => compName(a).localeCompare(compName(b), 'fr'))) {
+    const rs = db.routes.filter(r => { const m = routeMkt(r); return m && m.companyId === c.id && !m.archived && !r.archived; }).sort(byCode);
+    if (rs.length) h += `<optgroup label="${esc(compName(c))}">${rs.map(opt).join('')}</optgroup>`;
+  }
+  const loose = db.routes.filter(r => !routeMkt(r) && !r.archived).sort(byCode);
+  if (loose.length) h += `<optgroup label="Non classés">${loose.map(opt).join('')}</optgroup>`;
+  return h + `<option value="__new"${cur === '__new' ? ' selected' : ''}>Nouvel itinéraire…</option>`;
+}
+function visitSheet(mode, v) {
+  const isNew = mode === 'new';
+  ui.form = { kind: 'visit', mode, id: v ? v.id : null, objet: v ? v.objet : 'Visite de chantier', meteo: v ? v.meteo || '' : '' };
+  const F = ui.form;
+  let h = head(isNew ? 'Nouvelle visite' : 'Modifier la visite');
+  if (isNew) {
+    const cur = ui.visitRoute && getRoute(ui.visitRoute) ? ui.visitRoute : (db.routes.length ? '' : '__new');
+    h += `<div class="field"><label class="lbl" for="vs-iti">Itinéraire</label><select id="vs-iti">${itiOptions(cur)}</select><span class="hint" id="vs-info"></span></div>
+    <div class="vnew" id="vs-new" hidden>${marketSelect('vs-mkt', '')}<div class="grid2 code2">${fieldText('vs-code', 'Code', '', 'Ex. T5')}${fieldText('vs-len', 'Longueur prévue (km)', '', '', { mode: 'decimal' })}</div>${fieldText('vs-name', 'Nom de l’itinéraire', '', 'Ex. Bako – Moya I')}${fieldPK('vn', 'PK du point de départ', 0, 'Place-toi sur ce PK avant de démarrer.')}</div>`;
+  } else { const r = getRoute(v.routeId); h += `<p class="sh-lead">${esc(r ? routeTitle(r) : 'Itinéraire supprimé')}</p>`; }
+  h += `<div class="field"><span class="lbl">Objet</span><div class="chips">${VOBJ.map(o => chip('objet', o, o, F.objet === o)).join('')}</div></div>
+  ${fieldText('vs-prec', 'Précision (facultatif)', v && v.precision, 'Ex. réception du dalot OH-03')}
+  <div class="field"><label class="lbl" for="vs-date">Date</label><input id="vs-date" type="date" value="${esc(v ? v.date : todayISO())}"></div>
+  ${!isNew ? `<div class="grid2"><div class="field"><label class="lbl" for="vs-h1">Début</label><input id="vs-h1" type="time" value="${hmv(v.start)}"></div>${v.end ? `<div class="field"><label class="lbl" for="vs-h2">Fin</label><input id="vs-h2" type="time" value="${hmv(v.end)}"></div>` : ''}</div>` : ''}
+  ${fieldArea('vs-part', 'Participants', v && v.participants, 'Un par ligne : nom, structure, fonction', 3)}
+  <div class="field"><span class="lbl">Météo</span><div class="chips">${METEO.map(o => chip('meteo', o, o, F.meteo === o)).join('')}</div></div>
+  ${!isNew ? fieldArea('vs-note', 'Observations générales', v.note, 'Facultatif. Ex. bonne organisation du chantier', 2) : ''}
+  <button class="btn ${isNew ? 'red' : ''}" data-act="${isNew ? 'startVisit' : 'saveVisit'}">${isNew ? ICON.rec + 'Démarrer la visite' : 'Enregistrer'}</button>`;
+  return h;
+}
+function remSheet(mode, it, snap, v) {
+  const r = getRoute(v.routeId);
+  ui.form = { kind: 'rem', mode, id: it ? it.id : null, visitId: v.id, snap, pk0: it ? it.pk : null, pick: mode !== 'live' && r && r.pts.length >= 2 ? ['rp'] : null, pickT: 'rp', photos: it ? [...(it.photos || [])] : [], theme: it ? it.theme || '' : '' };
+  const F = ui.form, pk = it ? it.pk : snap ? snap.pk : (r ? defaultPk(r) : 0);
+  return head(mode === 'edit' ? 'Modifier la remarque' : 'Nouvelle remarque') + `
+  ${fieldPK('rp', 'PK', pk, esc(mode === 'live' ? coordLine(snap) : ''), 'rp-pos')}
+  ${mode !== 'live' && r ? pickBlock(r) : ''}
+  <div class="field"><label class="lbl" for="rm-t">Observation</label><textarea id="rm-t" rows="4"${mode !== 'edit' ? ' data-focus="1"' : ''} placeholder="Ex. reprofilage en cours sur 300 m, une niveleuse et un compacteur sur place">${esc(it ? it.texte : '')}</textarea></div>
+  <div class="field"><span class="lbl">Thème (facultatif)</span><div class="chips">${THEMES.map(t => chip('theme', t, t, F.theme === t)).join('')}</div></div>
+  ${fieldArea('rm-r', 'Recommandation (facultatif)', it && it.reco, 'Ex. reprendre le compactage avant la prochaine pluie', 2)}
+  ${photoField(F)}
+  <div class="grid2">${mode === 'edit' ? `<button class="btn danger" data-act="delRem" data-arg="${it.id}">Supprimer</button>` : ''}<button class="btn ${mode === 'edit' ? '' : 'span2'}" data-act="saveRem">Enregistrer</button></div>`;
+}
+function pvSheet(v) {
+  ui.form = { kind: 'pv', id: v.id };
+  ui.pvText = pvText(v);
+  return head('Texte du PV') + `<p class="sh-lead">Partage-le en fichier ou copie-le pour rédiger le PV de visite (Word, WhatsApp, Claude).</p>
+  <pre class="pv" id="pv-txt">${esc(ui.pvText)}</pre>
+  <div class="grid2"><button class="btn" data-act="sharePV">${ICON.share}Fichier .txt</button><button class="btn ghost" data-act="copyPV">Copier le texte</button></div>`;
+}
+function delVisitSheet(v) {
+  const n = visitObs(v).length;
+  ui.form = { kind: 'delvisit', id: v.id };
+  return head('Supprimer la visite') + `<p class="sh-lead">${esc(v.objet)} du ${esc(fmtDay(v.date))} · ${esc(visitCounts(v))}</p>
+  ${n ? `<label class="check"><input type="checkbox" id="dv-obs"><span>Supprimer aussi ${n > 1 ? 'les ' + n + ' constats et bornes notés' : 'le constat noté'} pendant la visite<br><small>Sinon ils restent dans l’itinéraire, avec leur suivi de correction.</small></span></label>` : ''}
+  <p class="hint">Les remarques de la visite sont supprimées. Tu pourras annuler juste après.</p>
+  <button class="btn danger" data-act="doDelVisit">Supprimer la visite</button>`;
+}
+
 function constatSheet(mode, o, snap) {
   const r = getRoute(ui.routeId);
   ui.form = { kind: 'obs', mode, id: o ? o.id : null, type: o ? o.type : null, cote: o ? o.cote : 'A', grav: o ? o.grav : 2, snap, pk0: o ? o.pk : null, pick: mode === 'live' ? null : ['o'], pickT: 'o', photos: o ? [...(o.photos || [])] : [], statut: o && o.statut === 'leve' ? 'leve' : 'ouvert', statut0: o ? o.statut : null, photosApres: o ? [...(o.photosApres || [])] : [] };
@@ -1601,6 +1943,16 @@ function sheetSync() {
     if (s && F.pk0 != null && Math.abs(pk - F.pk0) < 0.5 && hasPos(s)) setHint('s-pos', { t: coordLine(s) });
     else setHint('s-pos', posLine(r, pk));
     if (ps) ps.innerHTML = sketchSVG(r, { mark: pk, frame: true });
+  } else if (F.kind === 'rem' && r) {
+    if (F.mode === 'live') return;
+    const pk = readPK('rp'), v = getVisit(F.visitId), it = F.id && v ? v.items.find(x => x.id === F.id) : null;
+    if (it && F.pk0 != null && Math.abs(pk - F.pk0) < 0.5 && hasPos(it)) setHint('rp-pos', { t: coordLine(it) });
+    else setHint('rp-pos', posLine(r, pk));
+    if (ps) ps.innerHTML = sketchSVG(r, { mark: pk, frame: true, visit: v });
+  } else if (F.kind === 'visit' && F.mode === 'new') {
+    const sel = val('vs-iti'), box = $('#vs-new'), info = $('#vs-info'), rr = getRoute(sel);
+    if (box) box.hidden = sel !== '__new';
+    if (info) info.textContent = sel === '__new' ? 'Le tracé sera enregistré pendant la visite, depuis le PK de départ.' : rr ? (rr.pts.length >= 2 ? 'Tracé enregistré (' + fmtDist(pathLen(rr)) + ') : l’appli te repère dessus. Les anciens constats ne s’affichent pas pendant la visite.' : 'Pas encore de tracé : il sera enregistré pendant la visite, depuis le PK ' + fmtPK(rr.pkStart) + '.') : '';
   } else if (F.kind === 'track' && r) {
     $('#te-prev').innerHTML = trackPreview(r, F);
     $('#te-apply').disabled = !!F.res.error;
@@ -1629,6 +1981,7 @@ function settingsSheet() {
   const grp = (key, vals, unit) => `<div class="chips">${vals.map(v => `<button class="chip" data-act="set" data-arg="${key}:${v}" aria-pressed="${S[key] === v}">${unit ? '±' + v + ' ' + unit : v + ' m'}</button>`).join('')}</div>`;
   return head('Réglages') + `
   <button class="xbtn" data-act="profile"><b>Mon profil</b><span>${esc(db.ref.profile.nom || 'À compléter')}</span>${ICON.next}</button>
+  <div class="field"><span class="lbl">Enregistrement du tracé</span><div class="chips"><button class="chip" data-act="set" data-arg="foot:0" aria-pressed="${!S.foot}">En véhicule</button><button class="chip" data-act="set" data-arg="foot:1" aria-pressed="${!!S.foot}">À pied</button></div><span class="hint">En véhicule, seul le trajet roulé (à partir de 9 km/h) allonge le tracé : la marche autour des arrêts, les reculs et les manœuvres du véhicule sont ignorés. À pied, chaque déplacement compte, pour lever un tronçon en marchant.</span></div>
   <div class="field"><span class="lbl">Précision GPS minimale pour enregistrer</span>${grp('maxAcc', [10, 20, 30, 50], 'm')}<span class="hint">Les positions moins précises sont ignorées. ±20 m convient en général ; ±10 m sur route dégagée.</span></div>
   <div class="field"><span class="lbl">Pas minimal entre deux points</span>${grp('minStep', [3, 5, 10])}<span class="hint">Un pas plus grand limite l’effet du « bruit » GPS quand tu roules lentement.</span></div>
   <div class="field"><span class="lbl">Mode test</span><div class="chips"><button class="chip" data-act="set" data-arg="sim:0" aria-pressed="${!S.sim}">GPS réel</button><button class="chip" data-act="set" data-arg="sim:1" aria-pressed="${!!S.sim}">GPS simulé</button></div><span class="hint">Le GPS simulé fait rouler un véhicule fictif, pour essayer l’appli au bureau.</span></div>
@@ -1657,14 +2010,14 @@ const headCols = r => { const c = routeComp(r), m = routeMkt(r); return [compNam
 
 function obsCSV(r) {
   const z = r.pts.length ? toUTM(r.pts[0][LAT], r.pts[0][LON]).zone : null, hc = headCols(r);
-  const rows = [['Entreprise', 'Lot', 'Code itinéraire', 'Itinéraire', 'N°', 'Nature', 'PK', 'PK (m)', 'Côté', 'Gravité', 'Longueur (m)', 'Note', 'PK borne', 'Écart GPS − borne (m)', 'Latitude', 'Longitude', 'X UTM', 'Y UTM', 'Zone UTM', 'Précision GPS (m)', 'Photos', 'Statut', 'Date de correction', 'Observation à la levée', 'Photos après correction', 'Source', 'Date']];
+  const rows = [['Entreprise', 'Lot', 'Code itinéraire', 'Itinéraire', 'N°', 'Nature', 'PK', 'PK (m)', 'Côté', 'Gravité', 'Longueur (m)', 'Note', 'PK borne', 'Écart GPS − borne (m)', 'Latitude', 'Longitude', 'X UTM', 'Y UTM', 'Zone UTM', 'Précision GPS (m)', 'Photos', 'Statut', 'Date de correction', 'Observation à la levée', 'Photos après correction', 'Source', 'Visite', 'Date']];
   [...r.obs].sort((a, b) => obsPk(a) - obsPk(b)).forEach((o, i) => {
     const u = hasPos(o) ? toUTM(o.lat, o.lon, z) : null;
     const b = o.kind === 'borne';
     rows.push(hc.concat([i + 1, b ? 'Borne' : o.type, fmtPK(obsPk(o)), dec(obsPk(o), 1), b ? '' : COTES[o.cote], b ? '' : GRAV[o.grav], b ? '' : dec(o.len, 1),
       b ? [o.recale ? 'Chaînage recalé' : '', o.note].filter(Boolean).join(' · ') : o.note,
       b ? fmtPK(o.pkB) : '', b ? dec(o.ec, 1) : '', u ? dec(o.lat, 7) : '', u ? dec(o.lon, 7) : '', u ? dec(u.x, 2) : '', u ? dec(u.y, 2) : '', u ? u.zone + u.hemi : '', dec(o.acc, 0),
-      (o.photos || []).length || '', b ? '' : (o.statut === 'leve' ? 'Corrigé' : 'À corriger'), b ? '' : (o.dateLevee || ''), b ? '' : (o.noteLevee || ''), b ? '' : ((o.photosApres || []).length || ''), o.src === 'manuel' ? 'Saisie après coup' : 'GPS', new Date(o.t).toLocaleString('fr-FR')]));
+      (o.photos || []).length || '', b ? '' : (o.statut === 'leve' ? 'Corrigé' : 'À corriger'), b ? '' : (o.dateLevee || ''), b ? '' : (o.noteLevee || ''), b ? '' : ((o.photosApres || []).length || ''), o.src === 'manuel' ? 'Saisie après coup' : 'GPS', o.visitId && getVisit(o.visitId) ? fmtDay(getVisit(o.visitId).date) : '', new Date(o.t).toLocaleString('fr-FR')]));
   });
   return csv(rows);
 }
@@ -1729,7 +2082,7 @@ async function doBackup(withPhotos) {
   await save(true);
   if (!db.routes.length && !db.ref.companies.length) return toast('Rien à sauvegarder pour l’instant.', 'warn');
   toast('Préparation de la sauvegarde…');
-  const out = { app: 'PK Terrain', kind: 'sauvegarde', v: 3, exported: new Date().toISOString(), state: { ref: db.ref, settings: db.settings }, routes: db.routes, photos: [] };
+  const out = { app: 'PK Terrain', kind: 'sauvegarde', v: 3, exported: new Date().toISOString(), state: { ref: db.ref, settings: db.settings }, routes: db.routes, visits: db.visits, photos: [] };
   if (withPhotos && canPhoto()) {
     for (const id of referencedPhotos(false)) {
       try { const p = await photoGet(id); if (p && p.blob) out.photos.push({ id: p.id, type: p.blob.type, w: p.w, h: p.h, t: p.t, lat: p.lat, lon: p.lon, data: await blobToB64(p.blob) }); } catch (e) { }
@@ -1760,6 +2113,13 @@ async function importFile(text) {
     if (i < 0) { db.routes.push(r); Store.mark(r.id); added++; }
     else if ((r.updated || 0) > (db.routes[i].updated || 0)) { db.routes[i] = r; Store.mark(r.id); updated++; }
   }
+  let nvis = 0;
+  for (const v0 of Array.isArray(data.visits) ? data.visits : []) {
+    if (!v0 || !v0.id) continue;
+    const v = normVisit(v0), i = db.visits.findIndex(x => x.id === v.id);
+    if (i < 0) { db.visits.push(v); Store.vmark(v.id); nvis++; }
+    else if ((v.updated || 0) > (db.visits[i].updated || 0)) { db.visits[i] = v; Store.vmark(v.id); nvis++; }
+  }
   let refN = 0;
   if (data.state && data.state.ref) {
     const inc = data.state.ref;
@@ -1772,7 +2132,7 @@ async function importFile(text) {
     for (const p of data.photos) { try { if (!(await photoGet(p.id))) { await photoPut({ id: p.id, blob: b64ToBlob(p.data, p.type), w: p.w, h: p.h, t: p.t || Date.now(), lat: p.lat, lon: p.lon }); ph++; } } catch (e) { } }
   }
   await save(true); closeSheet(); render();
-  toast([plural(added, 'itinéraire ajouté', 'itinéraires ajoutés'), updated ? plural(updated, 'mis à jour', 'mis à jour') : '', refN ? plural(refN, 'fiche de référence', 'fiches de référence') : '', ph ? plural(ph, 'photo', 'photos') : ''].filter(Boolean).join(' · '));
+  toast([added || !(updated || refN || nvis) ? plural(added, 'itinéraire ajouté', 'itinéraires ajoutés') : '', updated ? plural(updated, 'mis à jour', 'mis à jour') : '', refN ? plural(refN, 'fiche de référence', 'fiches de référence') : '', nvis ? plural(nvis, 'visite', 'visites') : '', ph ? plural(ph, 'photo', 'photos') : ''].filter(Boolean).join(' · '));
 }
 function applyPaquet(pq, ids) {
   const t = pq.created ? Date.parse(pq.created) || 1 : 1;
@@ -1802,7 +2162,7 @@ function snapshot() {
   if (!live.mode || !r) return null;
   if (!f) { toast('Attends le signal GPS.', 'warn'); return null; }
   if (live.mode === 'loc' && !live.proj) { toast('Position hors du tracé.', 'warn'); return null; }
-  return { pk: live.mode === 'rec' ? recPk(r) : live.proj.pk, lat: f.lat, lon: f.lon, acc: Math.round(f.acc) };
+  return { pk: live.mode === 'rec' ? (live.here ? live.here.pk : lastPk(r)) : live.proj.pk, lat: f.lat, lon: f.lon, acc: Math.round(f.acc) };
 }
 function arm(b, label) {
   if (b.dataset.armed) return true;
@@ -1819,7 +2179,7 @@ const A = {
   tab(t) { ui.tab = t; render(); },
   settings() { openSheet(settingsSheet()); fillStorageInfo(); },
   set(arg) {
-    const [k, v] = arg.split(':'), nv = k === 'sim' ? v === '1' : +v, changed = db.settings[k] !== nv;
+    const [k, v] = arg.split(':'), nv = (k === 'sim' || k === 'foot') ? v === '1' : +v, changed = db.settings[k] !== nv;
     db.settings[k] = nv; save(true); openSheet(settingsSheet()); fillStorageInfo();
     if (k === 'sim' && changed) { if (live.mode) { stopLive(false); toast('Session arrêtée : relance-la avec la nouvelle source GPS.'); } render(); }
   },
@@ -1901,7 +2261,7 @@ const A = {
   },
   rec() { const r = getRoute(ui.routeId); if (r) startLive(r, 'rec'); },
   loc() { const r = getRoute(ui.routeId); if (r) startLive(r, 'loc'); },
-  resume(id) { const r = getRoute(id); if (r) startLive(r, 'rec'); },
+  resume(id) { const r = getRoute(id); if (!r) return; const vid = db.active && db.active.visitId && getVisit(db.active.visitId) ? db.active.visitId : null; startLive(r, 'rec', vid); },
   dismissActive() { db.active = null; save(true); render(); },
   pause() { live.paused = !live.paused; updateLive(); },
   finish() { const r = getRoute(live.routeId); stopLive(); if (r) toast('Itinéraire enregistré : PK ' + fmtPK(firstPk(r)) + ' → ' + fmtPK(lastPk(r))); },
@@ -1961,7 +2321,9 @@ const A = {
     toast(plural(res.nc, 'entreprise importée', 'entreprises importées') + ' · ' + plural(res.ni, 'itinéraire', 'itinéraires'));
   },
   pick(v, b) {
-    const g = b.dataset.group; ui.form[g] = g === 'grav' ? +v : v;
+    const g = b.dataset.group;
+    if ((g === 'meteo' || g === 'theme') && b.getAttribute('aria-pressed') === 'true') { ui.form[g] = ''; b.setAttribute('aria-pressed', 'false'); return; }
+    ui.form[g] = g === 'grav' ? +v : v;
     b.parentElement.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
     if (g === 'statut') { const bx = $('#leve-box'); if (bx) bx.hidden = v !== 'leve'; }
   },
@@ -1983,10 +2345,10 @@ const A = {
       commitRoute(r); closeSheet(); render(); undoToast(nowDone ? 'Constat marqué corrigé' : reopened ? 'Constat remis à corriger' : 'Constat modifié');
       return;
     }
-    if (F.mode === 'live') r.obs.push(Object.assign({ id: uid(), kind: 'obs', src: 'gps', lat: F.snap.lat, lon: F.snap.lon, acc: F.snap.acc, t: Date.now() }, data));
+    if (F.mode === 'live') r.obs.push(Object.assign({ id: uid(), kind: 'obs', src: 'gps', lat: F.snap.lat, lon: F.snap.lon, acc: F.snap.acc, t: Date.now(), visitId: live.visitId || null }, data));
     else {
       const p = r.pts.length >= 2 ? pkToPos(r.pts, pk) : null;
-      r.obs.push(Object.assign({ id: uid(), kind: 'obs', src: 'manuel', lat: p ? p.lat : null, lon: p ? p.lon : null, acc: null, t: Date.now() }, data));
+      r.obs.push(Object.assign({ id: uid(), kind: 'obs', src: 'manuel', lat: p ? p.lat : null, lon: p ? p.lon : null, acc: null, t: Date.now(), visitId: F.visitId || null }, data));
       ui.lastPk[r.id] = Math.round(pk);
     }
     commitRoute(r); closeSheet(); render(); toast('Constat noté au PK ' + fmtPK(pk));
@@ -1997,7 +2359,7 @@ const A = {
     const pkB = r1(readPK('b')), note = ($('#b-note').value || '').trim(), wantCal = !!($('#b-cal') && $('#b-cal').checked), photos = [...F.photos];
     if (F.mode === 'live') {
       const s = F.snap;
-      r.obs.push({ id: uid(), kind: 'borne', src: 'gps', pk: r1(s.pk), pkB, ec: r1(s.pk - pkB), lat: s.lat, lon: s.lon, acc: s.acc, t: Date.now(), recale: wantCal && live.mode === 'rec', note, photos });
+      r.obs.push({ id: uid(), kind: 'borne', src: 'gps', pk: r1(s.pk), pkB, ec: r1(s.pk - pkB), lat: s.lat, lon: s.lon, acc: s.acc, t: Date.now(), recale: wantCal && live.mode === 'rec', note, photos, visitId: live.visitId || null });
       if (wantCal && live.mode === 'rec') {
         const f = live.fix;
         if (f && f.acc <= db.settings.maxAcc && r.pts.length) r.pts.push([f.lat, f.lon, pkB, Math.round(f.acc), f.t]);
@@ -2070,6 +2432,102 @@ const A = {
     dropRoute(r.id); save(true); closeSheet(); ui.view = 'home'; render(); undoToast('Tracé supprimé');
   },
   obsf(v) { ui.obsFilter = v; render(); },
+  htab(t) { ui.home = t; render(); },
+  visits() { ui.view = 'home'; ui.home = 'vis'; render(); scrollTo(0, 0); },
+  visit(id) { const v = getVisit(id); if (!v) return; closeSheet(); ui.view = 'visit'; ui.visitId = id; ui.routeId = v.routeId; render(); scrollTo(0, 0); },
+  newVisit(rid) { if (rid) ui.visitRoute = rid; openForm(visitSheet('new')); },
+  startVisit() {
+    const F = ui.form; if (!F) return;
+    const sel = val('vs-iti'); let r;
+    if (sel === '__new') {
+      const name = val('vs-name'), code = val('vs-code');
+      if (!name && !code) return toast('Indique le nom ou le code du nouvel itinéraire.', 'warn');
+      r = normRoute({ id: uid(), name: name || code, code, marketId: val('vs-mkt') || null, longueurKm: num(val('vs-len')), type: '', pkStart: readPK('vn'), created: Date.now(), updated: Date.now(), refEdited: Date.now(), pts: [], obs: [] });
+      commitRoute(r);
+    } else r = getRoute(sel);
+    if (!r) return toast('Choisis un itinéraire.', 'warn');
+    const v = normVisit({ id: 'vis-' + uid(), routeId: r.id, date: val('vs-date') || todayISO(), start: Date.now(), end: null, objet: F.objet || 'Visite de chantier', precision: val('vs-prec'), participants: val('vs-part'), meteo: F.meteo || '', note: '', statut: 'cours', pkMin: null, pkMax: null, items: [], created: Date.now(), updated: Date.now() });
+    db.visits.push(v); Store.vmark(v.id); ui.visitRoute = r.id; save(true); closeSheet();
+    const withTrack = r.pts.length >= 2;
+    startLive(r, withTrack ? 'loc' : 'rec', v.id);
+    toast(withTrack ? 'Visite démarrée : repérage sur le tracé' : 'Visite démarrée : enregistrement du tracé');
+  },
+  resumeVisit(id) {
+    const v = getVisit(id), r = v && getRoute(v.routeId); if (!r) return toast('Itinéraire introuvable.', 'warn');
+    const mode = db.active && db.active.visitId === v.id ? 'rec' : (r.pts.length >= 2 ? 'loc' : 'rec');
+    v.statut = 'cours'; v.end = null; vtouch(v);
+    startLive(r, mode, v.id);
+  },
+  endVisit(id) {
+    const v = id ? getVisit(id) : liveVisit(); if (!v) return;
+    const wasLive = !!live.mode && live.visitId === v.id;
+    if (wasLive) stopLive(false);
+    v.end = wasLive ? Date.now() : Math.max(v.start || 0, ...v.items.map(i => i.t || 0), ...visitObs(v).map(o => o.t || 0));
+    v.statut = 'terminee'; vtouch(v); save(true);
+    closeSheet(); ui.view = 'visit'; ui.visitId = v.id; ui.routeId = v.routeId; render(); scrollTo(0, 0);
+    const vc = visitCounts(v); toast(vc.startsWith('Rien') ? 'Visite terminée' : 'Visite terminée : ' + vc);
+  },
+  editVisit(id) { const v = getVisit(id); if (v) openSheet(visitSheet('edit', v)); },
+  saveVisit() {
+    const F = ui.form, v = F && getVisit(F.id); if (!v) return closeSheet();
+    remember('visite modifiée', { visits: [v] });
+    const date = val('vs-date') || v.date;
+    const at = (hh, base) => { if (!hh) return base; const [H, Mi] = hh.split(':').map(Number); const d = new Date(date + 'T00:00:00'); d.setHours(H, Mi, 0, 0); return d.getTime(); };
+    Object.assign(v, { objet: F.objet || v.objet, precision: val('vs-prec'), date, participants: val('vs-part'), meteo: F.meteo || '', note: val('vs-note'), start: at(val('vs-h1'), v.start), end: v.end ? at(val('vs-h2'), v.end) : null });
+    vtouch(v); save(true); closeSheet(); render(); undoToast('Visite modifiée');
+  },
+  delVisit(id) { const v = getVisit(id); if (v) openSheet(delVisitSheet(v)); },
+  doDelVisit() {
+    const v = getVisit(ui.form && ui.form.id); if (!v) return closeSheet();
+    const withObs = !!($('#dv-obs') && $('#dv-obs').checked), r = getRoute(v.routeId);
+    remember('visite du ' + fmtShort(v.date) + ' supprimée', { visits: [v], routes: withObs && r ? [r] : [], deleted: true });
+    if (live.visitId === v.id) stopLive(false);
+    db.visits = db.visits.filter(x => x.id !== v.id); Store.vdrop(v.id);
+    if (withObs && r) { r.obs = r.obs.filter(o => o.visitId !== v.id); commitRoute(r); }
+    save(true); closeSheet(); ui.view = 'home'; ui.home = 'vis'; render(); undoToast('Visite supprimée');
+  },
+  addRem() { const V = liveVisit(), s = snapshot(); if (V && s) openForm(remSheet('live', null, s, V)); },
+  addRemV(id) { const v = getVisit(id); if (!v) return; ui.routeId = v.routeId; openForm(remSheet('new', null, null, v)); },
+  editRem(id) {
+    const v = db.visits.find(x => x.items.some(i => i.id === id)); if (!v) return;
+    ui.routeId = v.routeId; openForm(remSheet('edit', v.items.find(i => i.id === id), null, v));
+  },
+  saveRem() {
+    const F = ui.form, v = F && getVisit(F.visitId); if (!v) return closeSheet();
+    const r = getRoute(v.routeId), texte = val('rm-t'), reco = val('rm-r');
+    if (!texte && !F.photos.length) return toast('Écris l’observation ou ajoute une photo.', 'warn');
+    const pk = r1(readPK('rp'));
+    if (F.mode === 'edit') {
+      const it = v.items.find(x => x.id === F.id); if (!it) return closeSheet();
+      remember('remarque modifiée au PK ' + fmtPK(it.pk), { visits: [v] });
+      if (Math.abs(pk - it.pk) > 0.5) { const p = r && r.pts.length >= 2 ? pkToPos(r.pts, pk) : null; it.lat = p ? p.lat : null; it.lon = p ? p.lon : null; it.acc = null; }
+      Object.assign(it, { pk, texte, reco, theme: F.theme || '', photos: [...F.photos] });
+      vtouch(v); save(true); closeSheet(); render(); return undoToast('Remarque modifiée');
+    }
+    const it = { id: 'rem-' + uid(), pk, texte, reco, theme: F.theme || '', photos: [...F.photos], t: Date.now() };
+    if (F.mode === 'live') Object.assign(it, { src: 'gps', lat: F.snap.lat, lon: F.snap.lon, acc: F.snap.acc });
+    else { const p = r && r.pts.length >= 2 ? pkToPos(r.pts, pk) : null; Object.assign(it, { src: 'manuel', lat: p ? p.lat : null, lon: p ? p.lon : null, acc: null }); if (r) ui.lastPk[r.id] = Math.round(pk); }
+    v.items.push(it); vtouch(v); save(true); closeSheet(); render(); toast('Remarque notée au PK ' + fmtPK(pk));
+  },
+  delRem(id) {
+    const v = db.visits.find(x => x.items.some(i => i.id === id)); if (!v) return closeSheet();
+    const it = v.items.find(i => i.id === id);
+    remember('remarque du PK ' + fmtPK(it.pk) + ' supprimée', { visits: [v] });
+    v.items = v.items.filter(i => i.id !== id); vtouch(v); save(true); closeSheet(); render(); undoToast('Remarque supprimée');
+  },
+  addObsV(id) { const v = getVisit(id); if (!v) return; ui.routeId = v.routeId; openForm(constatSheet('new')); ui.form.visitId = v.id; },
+  pvPreview(id) { const v = getVisit(id); if (v) openSheet(pvSheet(v)); },
+  sharePV() {
+    const v = getVisit(ui.form && ui.form.id); if (!v) return;
+    const r = getRoute(v.routeId);
+    shareFile('PV-visite_' + slug([compName(r && routeComp(r)), r && (r.code || r.name)].filter(Boolean).join(' ')) + '_' + v.date + '.txt', 'text/plain', '\uFEFF' + pvText(v).replace(/\n/g, '\r\n'));
+  },
+  copyPV() {
+    const t = ui.pvText || '';
+    const fallback = () => { const el = $('#pv-txt'); if (el) { const rg = document.createRange(); rg.selectNodeContents(el); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rg); } toast('Texte sélectionné : utilise « Copier » du téléphone.'); };
+    try { navigator.clipboard.writeText(t).then(() => toast('Texte copié'), fallback); } catch (e) { fallback(); }
+  },
+  extendTrack() { const r = getRoute(live.routeId); if (!r) return; const V = liveVisit(); startLive(r, 'rec', V ? V.id : null); toast('Enregistrement de la suite du tracé'); },
   top(op) { const r = getRoute(ui.routeId); Object.assign(ui.form, { op, pickT: 't1' }, trackDefaults(r, op)); openForm(trackSheet()); },
   applyTrack() {
     const F = ui.form, r = getRoute(ui.routeId); if (!F || !r) return;
@@ -2117,7 +2575,7 @@ $('#sheet-body').addEventListener('input', () => sheetSync());
 $('#sheet-body').addEventListener('change', e => {
   const id = e.target.id || '';
   if (id.startsWith('ph-in-')) { const f = e.target.files && e.target.files[0]; if (f) addPhoto(f, id.slice(6)); e.target.value = ''; }
-  else if (id === 't-obs') sheetSync();
+  else if (id === 't-obs' || id === 'vs-iti') sheetSync();
 });
 $('#sheet-body').addEventListener('focusin', e => {
   const m = /^(\w+)-(km|m)$/.exec(e.target.id || ''), F = ui.form;
