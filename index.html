@@ -306,6 +306,14 @@ input[type=date]{min-height:50px}
 .sk-ouv{fill:var(--here);stroke:var(--surface);stroke-width:1.5}
 .lg.t{background:var(--here);clip-path:polygon(50% 0,100% 100%,0 100%);border-radius:0}
 .pill.neu{background:var(--sunk);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+/* v3.3 : journal de chantier */
+.tabs.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tabs.three .tab{font-size:15px;padding:12px 2px}
+input[type=time]{font:500 17px/1.3 var(--f-body);color:var(--ink);background:var(--sunk);border:1.5px solid var(--line);border-radius:10px;padding:12px;width:100%;min-width:0;min-height:50px;appearance:none;-webkit-appearance:none}
+.mcard .eyebrow{margin:2px 0 -4px}
+.mhead .grow{flex:1;min-width:0}
+.irow.jt{grid-template-columns:4.4em minmax(0,1fr) auto}
+.irow.jt .icode{font-size:16px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -317,7 +325,7 @@ input[type=date]{min-height:50px}
 
 <script>
 'use strict';
-const APP_VERSION = '3.2';
+const APP_VERSION = '3.3';
 
 /*GEO-START*/
 const RE = 6371008.8, DEG = Math.PI / 180;
@@ -638,9 +646,14 @@ const VOBJ = ['Visite de chantier', 'Visite conjointe', 'Visite de réception', 
 const METEO = ['Ensoleillé', 'Nuageux', 'Pluvieux'];
 const THEMES = ['Avancement', 'Qualité', 'Personnel', 'Matériel', 'HSE', 'Environnement', 'Planning'];
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+/* Journal de chantier : mêmes rubriques que le rapport mensuel (personnel, matériel). */
+const JPERS = [['directeur_travaux', 'Directeur des travaux'], ['conducteurs_travaux', 'Conducteurs des travaux'], ['expert_hse', 'Expert HSE'], ['equipe_topo', 'Équipe topo'], ['equipe_labo', 'Équipe labo'], ['conducteurs_engins', 'Conducteurs d’engins et autres'], ['manoeuvres_qualifies', 'Manœuvres qualifiés'], ['ouvriers', 'Ouvriers']];
+const JMAT = [['bulldozer', 'Bulldozer'], ['niveleuse', 'Niveleuse'], ['chargeuse', 'Chargeuse'], ['compacteur_vibrant', 'Compacteur vibrant'], ['pelle', 'Pelle / tractopelle'], ['compacteur_main', 'Compacteur à main'], ['porte_chars', 'Porte-chars'], ['pickup', 'Pick-up de liaison'], ['camions_bennes', 'Camions bennes'], ['citerne_eau', 'Camion-citerne à eau'], ['betonniere', 'Bétonnière'], ['aiguille_vibrante', 'Aiguille vibrante'], ['autres', 'Autres engins']];
+const JACTS = ['Installation de chantier', 'Débroussaillage', 'Décapage', 'Abattage d’arbres', 'Reprofilage léger', 'Reprofilage lourd', 'Purges', 'Remblai', 'Réglage et compactage', 'Couche de roulement', 'Fossés et divergents', 'Fouilles pour ouvrages', 'Pose de buses', 'Ferraillage', 'Coffrage', 'Bétonnage', 'Remblai des ouvrages', 'Démolition', 'Curage d’ouvrages', 'Signalisation', 'Forage', 'Autre'];
+const JETAT = { cours: 'En cours', fini: 'Terminé' };
 
 const emptyRef = () => ({ profile: {}, mission: {}, companies: [], markets: [], postes: [], structures: [] });
-const blankDb = () => ({ routes: [], visits: [], ref: emptyRef(), settings: Object.assign({}, DEF), active: null, lastBackup: null, migratedAt: null });
+const blankDb = () => ({ routes: [], visits: [], journal: [], ref: emptyRef(), settings: Object.assign({}, DEF), active: null, lastBackup: null, migratedAt: null });
 let db = blankDb();
 let undo = null;
 
@@ -666,7 +679,17 @@ function normalize(d) {
   d.ref = ref;
   d.routes = (Array.isArray(d.routes) ? d.routes : []).filter(r => r && r.id).map(normRoute);
   d.visits = (Array.isArray(d.visits) ? d.visits : []).filter(v => v && v.id).map(normVisit);
+  d.journal = (Array.isArray(d.journal) ? d.journal : []).filter(j => j && j.id).map(normJour);
   return d;
+}
+function normJour(j) {
+  if (!j.date) j.date = todayISO();
+  for (const k of ['personnel', 'materiel']) if (!j[k] || typeof j[k] !== 'object') j[k] = {};
+  if (!Array.isArray(j.taches)) j.taches = [];
+  for (const t of j.taches) { if (!t.id) t.id = 'tch-' + uid(); if (!Array.isArray(t.photos)) t.photos = []; }
+  if (!Array.isArray(j.photos)) j.photos = [];
+  if (!j.created) j.created = Date.now();
+  return j;
 }
 function normVisit(v) {
   if (!Array.isArray(v.items)) v.items = [];
@@ -702,7 +725,7 @@ const idbReq = q => new Promise((res, rej) => { q.onsuccess = () => res(q.result
 const metaDoc = () => ({ v: 3, ref: db.ref, settings: db.settings, active: db.active, lastBackup: db.lastBackup, migratedAt: db.migratedAt });
 
 const Store = {
-  mode: 'ls', idb: null, dirty: new Set(), gone: new Set(), vdirty: new Set(), vgone: new Set(), timer: null, persisted: null, failed: false,
+  mode: 'ls', idb: null, dirty: new Set(), gone: new Set(), vdirty: new Set(), vgone: new Set(), jdirty: new Set(), jgone: new Set(), timer: null, persisted: null, failed: false,
   async init() {
     try { this.idb = await idbOpen(); this.mode = 'idb'; } catch (e) { this.mode = 'ls'; }
     if (this.mode === 'idb') {
@@ -713,7 +736,8 @@ const Store = {
           const routes = await idbReq(st.objectStore('routes').getAll());
           const u = await idbReq(st.objectStore('meta').get('undo'));
           const visits = await idbReq(st.objectStore('meta').getAll(IDBKeyRange.bound('v:', 'v:\uffff')));
-          db = normalize(Object.assign(blankDb(), meta, { routes, visits }));
+          const journal = await idbReq(st.objectStore('meta').getAll(IDBKeyRange.bound('j:', 'j:\uffff')));
+          db = normalize(Object.assign(blankDb(), meta, { routes, visits, journal }));
           undo = u || null;
           return;
         }
@@ -728,6 +752,7 @@ const Store = {
       db.migratedAt = Date.now();
       db.routes.forEach(r => this.dirty.add(r.id));
       db.visits.forEach(v => this.vdirty.add(v.id));
+      db.journal.forEach(j => this.jdirty.add(j.id));
       await this.flush();          // la copie de l'ancienne version reste dans le stockage simple, intacte
     }
   },
@@ -735,12 +760,14 @@ const Store = {
   drop(id) { this.gone.add(id); this.dirty.delete(id); },
   vmark(id) { this.vdirty.add(id); this.vgone.delete(id); },
   vdrop(id) { this.vgone.add(id); this.vdirty.delete(id); },
+  jmark(id) { this.jdirty.add(id); this.jgone.delete(id); },
+  jdrop(id) { this.jgone.add(id); this.jdirty.delete(id); },
   schedule() { if (!this.timer) this.timer = setTimeout(() => { this.timer = null; this.flush(); }, 3000); },
   async flush() {
     clearTimeout(this.timer); this.timer = null;
     if (this.mode === 'idb') {
-      const ids = [...this.dirty], gone = [...this.gone], vids = [...this.vdirty], vgone = [...this.vgone];
-      this.dirty.clear(); this.gone.clear(); this.vdirty.clear(); this.vgone.clear();
+      const ids = [...this.dirty], gone = [...this.gone], vids = [...this.vdirty], vgone = [...this.vgone], jids = [...this.jdirty], jgone = [...this.jgone];
+      this.dirty.clear(); this.gone.clear(); this.vdirty.clear(); this.vgone.clear(); this.jdirty.clear(); this.jgone.clear();
       try {
         await new Promise((res, rej) => {
           const t = this.idb.transaction(['routes', 'meta'], 'readwrite'), rs = t.objectStore('routes');
@@ -749,18 +776,20 @@ const Store = {
           const ms = t.objectStore('meta');
           for (const id of vids) { const v = getVisit(id); if (v) ms.put(v, 'v:' + id); }
           for (const id of vgone) ms.delete('v:' + id);
+          for (const id of jids) { const j = getJour(id); if (j) ms.put(j, 'j:' + id); }
+          for (const id of jgone) ms.delete('j:' + id);
           t.objectStore('meta').put(metaDoc(), 'state');
           t.objectStore('meta').put(undo || null, 'undo');
           t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
         });
         this.failed = false;
       } catch (e) {
-        ids.forEach(i => this.dirty.add(i)); gone.forEach(i => this.gone.add(i)); vids.forEach(i => this.vdirty.add(i)); vgone.forEach(i => this.vgone.add(i));
+        ids.forEach(i => this.dirty.add(i)); gone.forEach(i => this.gone.add(i)); vids.forEach(i => this.vdirty.add(i)); vgone.forEach(i => this.vgone.add(i)); jids.forEach(i => this.jdirty.add(i)); jgone.forEach(i => this.jgone.add(i));
         if (!this.failed) toast('Enregistrement impossible : la mémoire du téléphone est peut-être pleine.', 'bad');
         this.failed = true;
       }
     } else {
-      try { localStorage.setItem(KEY, JSON.stringify(Object.assign(metaDoc(), { routes: db.routes, visits: db.visits }))); }
+      try { localStorage.setItem(KEY, JSON.stringify(Object.assign(metaDoc(), { routes: db.routes, visits: db.visits, journal: db.journal }))); }
       catch (e) { toast('Mémoire pleine : exporte une sauvegarde puis supprime un ancien itinéraire.', 'bad'); }
       try { if (undo) localStorage.setItem(UKEY, JSON.stringify(undo)); else localStorage.removeItem(UKEY); } catch (e) { }
     }
@@ -814,6 +843,9 @@ function referencedPhotos(withUndo) {
   const scan = routes => { for (const r of routes || []) for (const o of (r && r.obs) || []) for (const p of (o.photos || []).concat(o.photosApres || [])) s.add(p); };
   scan(db.routes);
   for (const v of db.visits || []) for (const it of v.items || []) for (const p of it.photos || []) s.add(p);
+  const scanJ = j => { for (const p of j.photos || []) s.add(p); for (const t of j.taches || []) for (const p of t.photos || []) s.add(p); };
+  for (const j of db.journal || []) scanJ(j);
+  if (withUndo && undo) for (const x of undo.journal || []) if (x.data) scanJ(x.data);
   if (withUndo && undo) for (const x of undo.visits || []) if (x.data) for (const it of x.data.items || []) for (const p of it.photos || []) s.add(p);
   if (withUndo && undo) {
     if (undo.obsOnly) for (const o of undo.routes[0].data || []) for (const p of (o.photos || []).concat(o.photosApres || [])) s.add(p);
@@ -861,6 +893,8 @@ const postesOf = m => db.ref.postes.filter(p => p.marketId === m.id);
 const refTouch = e => { e.updated = Date.now(); };
 const getVisit = id => db.visits.find(v => v.id === id);
 const vtouch = v => { v.updated = Date.now(); Store.vmark(v.id); };
+const getJour = id => db.journal.find(j => j.id === id);
+const jtouch = j => { j.updated = Date.now(); Store.jmark(j.id); };
 const visitObs = v => { const r = getRoute(v.routeId); return r ? r.obs.filter(o => o.visitId === v.id) : []; };
 const liveVisit = () => live.mode && live.visitId ? getVisit(live.visitId) : null;
 function visitCounts(v) { const o = visitObs(v), nc = o.filter(x => x.kind === 'obs').length, nb = o.length - nc, nr = v.items.length; return [nc ? plural(nc, 'constat', 'constats') : '', nr ? plural(nr, 'remarque', 'remarques') : '', nb ? plural(nb, 'borne', 'bornes') : ''].filter(Boolean).join(' · ') || 'Rien de noté pour l’instant'; }
@@ -871,7 +905,8 @@ function remember(label, o) {
   o = o || {};
   const routes = (o.routes || []).map(r => typeof r === 'string' ? { id: r, data: null } : { id: r.id, data: clone(o.obsOnly ? r.obs : r) });
   const visits = (o.visits || []).map(v => typeof v === 'string' ? { id: v, data: null } : { id: v.id, data: clone(v) });
-  undo = { label, t: Date.now(), obsOnly: !!o.obsOnly, routes, visits, ref: o.ref ? clone(db.ref) : null, deleted: !!o.deleted };
+  const journal = (o.journal || []).map(j => typeof j === 'string' ? { id: j, data: null } : { id: j.id, data: clone(j) });
+  undo = { label, t: Date.now(), obsOnly: !!o.obsOnly, routes, visits, journal, ref: o.ref ? clone(db.ref) : null, deleted: !!o.deleted };
 }
 function clearUndo() { undo = null; Store.schedule(); }
 const undoFresh = () => undo && Date.now() - undo.t < 30 * 60 * 1000;
@@ -894,6 +929,12 @@ function doUndo() {
     const i = db.visits.findIndex(v => v.id === x.id), v = normVisit(x.data);
     if (i < 0) db.visits.push(v); else db.visits[i] = v;
     Store.vmark(v.id);
+  }
+  for (const x of u.journal || []) {
+    if (!x.data) { db.journal = db.journal.filter(j => j.id !== x.id); Store.jdrop(x.id); continue; }
+    const i = db.journal.findIndex(j => j.id === x.id), j = normJour(x.data);
+    if (i < 0) db.journal.push(j); else db.journal[i] = j;
+    Store.jmark(j.id);
   }
   if (u.ref) db.ref = u.ref;
   save(true); closeSheet(); render(); toast('Annulé : ' + u.label);
@@ -937,7 +978,7 @@ const ICON = {
 };
 
 /* ---------- État de session ---------- */
-const ui = { view: 'home', home: 'ent', routeId: null, companyId: null, marketId: null, visitId: null, visitRoute: null, tab: 'terrain', step: 100, coord: 'utm', form: null, lastPk: {}, pending: null };
+const ui = { view: 'home', home: 'ent', routeId: null, companyId: null, marketId: null, visitId: null, visitRoute: null, jourId: null, tab: 'terrain', step: 100, coord: 'utm', form: null, lastPk: {}, pending: null };
 const live = { mode: null, routeId: null, visitId: null, paused: false, watchId: null, fix: null, pk: null, proj: null, here: null, why: null, ms: null, lastFixT: 0, startedAt: 0, startPk: 0, startLen: 0, err: null, gap: null, wake: null, simTimer: null, simS: 0, sim: null, lastSketch: 0 };
 const recording = r => live.mode === 'rec' && live.routeId === r.id;
 const isLiveOn = r => !!live.mode && live.routeId === r.id;
@@ -1119,6 +1160,7 @@ function render() {
   else if (ui.view === 'company' && comp(ui.companyId)) html = companyHTML(comp(ui.companyId));
   else if (ui.view === 'bordereau' && mkt(ui.marketId)) html = bordereauHTML(mkt(ui.marketId));
   else if (ui.view === 'visit' && getVisit(ui.visitId)) html = visitHTML(getVisit(ui.visitId));
+  else if (ui.view === 'jour' && getJour(ui.jourId)) html = jourHTML(getJour(ui.jourId));
   else { ui.view = 'home'; html = homeHTML(); }
   app.innerHTML = html;
   hydratePhotos(app);
@@ -1144,7 +1186,7 @@ function homeHTML() {
   if (isIOS && !navigator.standalone && window.isSecureContext) h += `<p class="alert info">Pour l’utiliser sans réseau : touche Partager, puis « Sur l’écran d’accueil ».</p>`;
   if (Store.mode !== 'idb') h += `<p class="alert warn">Stockage limité dans ce navigateur : les photos sont désactivées. Ouvre l’appli depuis l’écran d’accueil ou dans Safari.</p>`;
   if (undoFresh() && (undo.deleted || (undo.ref && !undo.routes.length))) h += undoBar('Dernière modification : ' + undo.label);
-  const hasData = db.routes.some(r => r.pts.length || r.obs.length);
+  const hasData = db.routes.some(r => r.pts.length || r.obs.length) || db.journal.length > 0;
   if (hasData && (!db.lastBackup || daysAgo(db.lastBackup) >= 7)) h += `<div class="undo warnbar"><span>${db.lastBackup ? 'Dernière sauvegarde il y a ' + plural(daysAgo(db.lastBackup), 'jour', 'jours') + '.' : 'Aucune sauvegarde de tes données pour l’instant.'} Envoie-toi une copie par WhatsApp ou e-mail.</span><button class="btn ghost sm" data-act="backup" data-arg="1">Sauvegarder</button></div>`;
   const openV = live.mode ? null : db.visits.filter(v => v.statut === 'cours' && getRoute(v.routeId)).sort((a, b) => (b.updated || 0) - (a.updated || 0))[0];
   if (live.mode && getRoute(live.routeId)) {
@@ -1159,9 +1201,10 @@ function homeHTML() {
     h += `<section class="card"><h3>Enregistrement interrompu</h3><p>« ${esc(routeTitle(r))} » s’est arrêté au PK ${fmtPK(lastPk(r))}. Reprends depuis ce point, ou clos l’itinéraire.</p><div class="grid2"><button class="btn red" data-act="resume" data-arg="${r.id}">Reprendre</button><button class="btn ghost" data-act="dismissActive">Clore</button></div></section>`;
   }
   if (!P.nom) h += `<section class="card"><h3>Ton profil</h3><p>Ton nom et ta fonction figureront sur les fiches et les rapports.</p><button class="btn ghost" data-act="profile">Compléter mon profil</button></section>`;
-  const nv = db.visits.length;
-  h += `<nav class="tabs two" role="tablist"><button class="tab" role="tab" aria-selected="${ui.home !== 'vis'}" data-act="htab" data-arg="ent">Entreprises</button><button class="tab" role="tab" aria-selected="${ui.home === 'vis'}" data-act="htab" data-arg="vis">Visites${nv ? ' · ' + nv : ''}</button></nav>`;
+  const nv = db.visits.length, nj = db.journal.length;
+  h += `<nav class="tabs three" role="tablist"><button class="tab" role="tab" aria-selected="${ui.home !== 'vis' && ui.home !== 'jour'}" data-act="htab" data-arg="ent">Entreprises</button><button class="tab" role="tab" aria-selected="${ui.home === 'vis'}" data-act="htab" data-arg="vis">Visites${nv ? ' · ' + nv : ''}</button><button class="tab" role="tab" aria-selected="${ui.home === 'jour'}" data-act="htab" data-arg="jour">Journal${nj ? ' · ' + nj : ''}</button></nav>`;
   if (ui.home === 'vis') return h + visitsListHTML();
+  if (ui.home === 'jour') return h + journalListHTML();
   if (!companies.length) {
     h += `<section class="card"><h3>Tes entreprises</h3><p>Importe le paquet mission reçu (fichier .json) : il contient les entreprises, les marchés, les itinéraires et les bordereaux. Tu peux aussi ajouter une entreprise à la main.</p><div class="grid2"><button class="btn" data-act="import">${ICON.file}Importer</button><button class="btn ghost" data-act="newCompany">${ICON.plus}Entreprise</button></div></section>`;
   } else {
@@ -1508,6 +1551,109 @@ function pvText(v) {
   ln('', 'Texte produit par PK Terrain le ' + new Date().toLocaleDateString('fr-FR') + ' à ' + hm(Date.now()) + '.');
   return L.join('\n').replace(/[\u202f\u00a0]/g, ' ');
 }
+/* ---------- Journal de chantier : une fiche par jour et par entreprise ---------- */
+const byCodeR = (a, b) => String(a.code || a.name).localeCompare(String(b.code || b.name), 'fr', { numeric: true });
+const compRoutes = c => c ? db.routes.filter(r => { const m = routeMkt(r); return m && m.companyId === c.id && !m.archived && !r.archived; }).sort(byCodeR) : [];
+const compPostes = c => c ? db.ref.postes.filter(p => mktsOf(c).some(m => m.id === p.marketId && !m.archived)) : [];
+const jSum = o => Object.values(o || {}).reduce((s, v) => s + (typeof v === 'number' && isFinite(v) ? v : 0), 0);
+const jPoste = t => t.posteId ? db.ref.postes.find(p => p.id === t.posteId) : null;
+const jIti = t => { const r = t.routeId && getRoute(t.routeId); return r ? routeTitle(r) : (t.itiNom || 'Général (hors itinéraire)'); };
+const jMkt = j => (j.marketId && mkt(j.marketId)) || (comp(j.companyId) ? mktsOf(comp(j.companyId)).find(m => !m.archived) : null);
+/* « 2+350 », « 2 + 350 », « 2350 » → 2350 m ; vide → null */
+function parsePK(s) {
+  s = String(s ?? '').trim().replace(/\s/g, '').replace(/^pk/i, ''); if (!s) return null;
+  const m = /^(\d+)\+(\d{1,3}(?:[.,]\d+)?)$/.exec(s);
+  if (m) return parseInt(m[1], 10) * 1000 + parseFloat(m[2].replace(',', '.'));
+  const x = num(s); return x == null ? null : x;
+}
+const pkTxt = v => v == null ? '' : fmtPK(v);
+function jTacheLine(t) {
+  const p = jPoste(t), pk = t.pk1 != null ? (t.pk2 != null && t.pk2 !== t.pk1 ? 'PK ' + fmtPK(t.pk1) + ' → ' + fmtPK(t.pk2) : 'PK ' + fmtPK(t.pk1)) : '';
+  return [(t.act || 'Tâche') + (t.prec ? ' – ' + t.prec : ''), pk, t.qty != null ? nfq.format(t.qty) + (t.unit ? ' ' + t.unit : '') : '', p ? 'prix n° ' + (p.num || '?') : '', JETAT[t.etat] || ''].filter(Boolean).join(' · ');
+}
+function jourCounts(j) {
+  const np = jSum(j.personnel), ne = jSum(j.materiel), nt = j.taches.length;
+  return [nt ? plural(nt, 'tâche', 'tâches') : 'Aucune tâche', np ? np + ' pers.' : '', ne ? plural(ne, 'engin', 'engins') : ''].filter(Boolean).join(' · ');
+}
+const jMeteo = j => [j.meteo1 ? 'matin ' + j.meteo1.toLowerCase() : '', j.meteo2 ? 'après-midi ' + j.meteo2.toLowerCase() : ''].filter(Boolean).join(', ');
+function jourCard(j) {
+  const c = comp(j.companyId), m = jMkt(j), d = new Date(j.date + 'T12:00:00');
+  return `<li><button class="rcard" data-act="jour" data-arg="${j.id}"><span class="mini" aria-hidden="true"><i></i><b>${isNaN(d) ? '—' : d.getDate()}</b><small>${isNaN(d) ? '' : MOIS[d.getMonth()]}</small></span><span><span class="t">${esc(compName(c) || 'Entreprise supprimée')}${m && m.lot ? ' · Lot ' + esc(m.lot) : ''}</span><br><span class="m">${esc(jourCounts(j))}</span>${jMeteo(j) ? `<br><span class="m">${esc(jMeteo(j))}</span>` : ''}</span>${ICON.next}</button></li>`;
+}
+function journalListHTML() {
+  const js = db.journal.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || compName(comp(a.companyId)).localeCompare(compName(comp(b.companyId)), 'fr'));
+  let h = `<button class="btn red" data-act="newJour">${ICON.plus}Nouvelle fiche du jour</button>`;
+  if (!js.length) return h + `<section class="card"><h3>Journal de chantier</h3><ol class="steps">
+      <li><div><b>Une fiche par jour et par entreprise</b><span>Météo, horaires, personnel et matériel présents sur le chantier.</span></div></li>
+      <li><div><b>Note les tâches par itinéraire</b><span>Activité, PK de début et de fin, quantité exécutée, n° de prix du bordereau, photos.</span></div></li>
+      <li><div><b>Complète au fil de la journée</b><span>Contrôles et essais, incidents, HSE, visites, instructions données. Tout reste dans le téléphone, sans réseau.</span></div></li>
+      <li><div><b>Exporte pour les rapports</b><span>En fin de semaine ou de mois, exporte le journal et envoie-le à Claude pour préparer le rapport.</span></div></li>
+    </ol></section>`;
+  let cur = null, out = '';
+  for (const j of js) { const k = monthLabel(j.date); if (k !== cur) { if (cur !== null) out += '</ul>'; out += `<h3 class="h3">${esc(k)}</h3><ul class="rlist">`; cur = k; } out += jourCard(j); }
+  return h + out + '</ul>' + `<button class="btn ghost" data-act="jourExport">${ICON.share}Exporter pour les rapports</button>`;
+}
+const jSec = (title, act, body, arg) => `<section class="mcard"><div class="mhead"><div class="grow"><h3>${title}</h3></div><button class="icon-btn" data-act="${act}"${arg ? ` data-arg="${esc(arg)}"` : ''} aria-label="Modifier : ${esc(title)}">${ICON.edit}</button></div>${body}</section>`;
+const jFacts = rows => { rows = rows.filter(x => x[1] !== '' && x[1] != null); return rows.length ? `<dl class="facts">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''; };
+const JAUT = [['controles', 'Contrôles, essais et réceptions'], ['incidents', 'Incidents et non-conformités'], ['hse', 'HSE et environnement'], ['visites', 'Visites, réunions et visiteurs'], ['instructions', 'Instructions données à l’entreprise'], ['observations', 'Observations générales']];
+function jourHTML(j) {
+  const c = comp(j.companyId), m = jMkt(j);
+  let h = topBar('journal', '', `<p class="eyebrow">${esc(new Date(j.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</p><h2>${esc(compName(c) || 'Entreprise supprimée')}</h2>`, m ? esc(mktLabel(m)) : '', `<button class="icon-btn" data-act="editJour" data-arg="${j.id}" aria-label="Changer la date ou l’entreprise">${ICON.edit}</button>`);
+  if (undoFresh() && !undo.deleted && (undo.journal || []).some(x => x.id === j.id)) h += undoBar('Dernière modification : ' + undo.label);
+  const hor = j.h1 || j.h2 ? (j.h1 ? 'de ' + j.h1.replace(':', ' h ') : '') + (j.h2 ? ' à ' + j.h2.replace(':', ' h ') : '') : '';
+  const cond = jFacts([['Météo matin', j.meteo1 || ''], ['Météo après-midi', j.meteo2 || ''], ['Horaires du chantier', hor.trim()], ['Arrêt intempéries', j.arretH ? nfq.format(j.arretH) + ' h' : '']]);
+  h += jSec('Conditions du jour', 'jourCond', cond || '<p class="hint">Météo et horaires à renseigner.</p>');
+  const pers = JPERS.filter(([k]) => j.personnel[k]).map(([k, l]) => [l, String(j.personnel[k])]);
+  h += jSec('Personnel · ' + jSum(j.personnel), 'jourPers', (jFacts(pers) || '<p class="hint">Effectifs présents à renseigner.</p>') + (j.persNote ? `<p class="note">${esc(j.persNote)}</p>` : ''));
+  const mat = JMAT.filter(([k]) => j.materiel[k]).map(([k, l]) => [k === 'autres' && j.matAutres ? 'Autres : ' + j.matAutres : l, String(j.materiel[k])]);
+  h += jSec('Matériel · ' + jSum(j.materiel), 'jourMat', (jFacts(mat) || '<p class="hint">Engins présents à renseigner.</p>') + (j.matPanne ? `<p class="note">En panne ou immobilisé : ${esc(j.matPanne)}</p>` : ''));
+  const groups = new Map();
+  for (const t of j.taches) { const k = jIti(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
+  let tb = '';
+  for (const [k, ts] of groups) tb += `<p class="eyebrow">${esc(k)}</p><ul class="ilist">${ts.map(t => `<li><button class="irow jt" data-act="editTache" data-arg="${t.id}"><span class="icode">${t.pk1 != null ? esc(fmtPK(t.pk1)) : '—'}</span><span><b>${esc((t.act || 'Tâche') + (t.prec ? ' – ' + t.prec : ''))}</b><small>${esc([t.qty != null ? nfq.format(t.qty) + (t.unit ? ' ' + t.unit : '') : '', jPoste(t) ? 'prix n° ' + (jPoste(t).num || '?') : '', JETAT[t.etat] || '', t.photos.length ? plural(t.photos.length, 'photo', 'photos') : ''].filter(Boolean).join(' · ') || 'Touche pour compléter')}</small></span>${ICON.next}</button></li>`).join('')}</ul>`;
+  h += `<section class="mcard"><div class="mhead"><div class="grow"><h3>Travaux exécutés · ${j.taches.length}</h3></div></div>${tb || '<p class="hint">Aucune tâche notée. Ajoute chaque activité de la journée, itinéraire par itinéraire.</p>'}<button class="btn ghost" data-act="addTache">${ICON.plus}Tâche</button></section>`;
+  const aut = JAUT.filter(([k]) => j[k]).map(([k, l]) => `<div><dt>${esc(l)}</dt><dd class="pre">${esc(j[k])}</dd></div>`).join('');
+  h += jSec('Autres rubriques', 'jourAutres', (aut ? `<dl class="facts one">${aut}</dl>` : '<p class="hint">Contrôles et essais, incidents, HSE, visites, instructions, observations.</p>') + (j.photos.length ? `<div class="thumbs">${j.photos.map(id => `<button class="thumb" data-act="viewPhoto" data-arg="${id}" aria-label="Voir la photo"><img data-photo="${id}" alt=""></button>`).join('')}</div>` : ''));
+  h += `<div class="grid2"><button class="btn" data-act="jourText">${ICON.file}Texte de la fiche</button><button class="btn ghost" data-act="jourPrev">Reprendre la veille</button></div>`;
+  h += `<p class="note">« Reprendre la veille » recopie les horaires, le personnel et le matériel de la fiche précédente de cette entreprise.</p>`;
+  h += `<button class="btn danger" data-act="delJour" data-arg="${j.id}">Supprimer la fiche</button>`;
+  return h;
+}
+/* Texte de la fiche du jour (partage WhatsApp, Word, Claude). */
+function journalText(j) {
+  const c = comp(j.companyId), m = jMkt(j), P = db.ref.profile || {}, M = db.ref.mission || {};
+  const L = [], ln = (...a) => L.push(...a); let n = 0; const sec = t => { n++; ln('', n + '. ' + t); };
+  ln('PROJET DE CONNECTIVITÉ INCLUSIVE ET D’INFRASTRUCTURES RURALES EN CÔTE D’IVOIRE (PCR-CI)');
+  const mis = [M.nom, M.bureau].filter(Boolean).join(' – '); if (mis) ln(mis);
+  ln('', 'JOURNAL DE CHANTIER – ' + new Date(j.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase());
+  if (c) ln('Entreprise : ' + (c.nom && c.nom !== c.sigle && !c.nom.includes(c.sigle) ? c.sigle + ' (' + c.nom + ')' : (c.nom || compName(c))));
+  if (m) ln('Marché : ' + [mktLabel(m), m.numero ? 'n° ' + m.numero : ''].filter(Boolean).join(' – '));
+  if (P.nom) ln('Contrôleur : ' + P.nom + (P.fonction ? ', ' + P.fonction : ''));
+  sec('CONDITIONS DU JOUR');
+  ln('Météo : ' + (jMeteo(j) || 'non renseignée'));
+  ln('Horaires du chantier : ' + (j.h1 || j.h2 ? (j.h1 ? 'de ' + j.h1.replace(':', ' h ') : '') + (j.h2 ? ' à ' + j.h2.replace(':', ' h ') : '') : 'non renseignés'));
+  if (j.arretH) ln('Arrêt pour intempéries : ' + nfq.format(j.arretH) + ' h');
+  sec('PERSONNEL PRÉSENT (' + jSum(j.personnel) + ')');
+  const pers = JPERS.filter(([k]) => j.personnel[k]);
+  ln(...(pers.length ? pers.map(([k, l]) => '- ' + l + ' : ' + j.personnel[k]) : ['- Non renseigné']));
+  if (j.persNote) ln('Observation : ' + j.persNote);
+  sec('MATÉRIEL PRÉSENT (' + jSum(j.materiel) + ')');
+  const mat = JMAT.filter(([k]) => j.materiel[k]);
+  ln(...(mat.length ? mat.map(([k, l]) => '- ' + (k === 'autres' && j.matAutres ? 'Autres (' + j.matAutres + ')' : l) + ' : ' + j.materiel[k]) : ['- Non renseigné']));
+  if (j.matPanne) ln('En panne ou immobilisé : ' + j.matPanne);
+  sec('TRAVAUX EXÉCUTÉS');
+  if (!j.taches.length) ln('Pas de travaux pendant la journée.');
+  const groups = new Map();
+  for (const t of j.taches) { const k = jIti(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
+  for (const [k, ts] of groups) {
+    ln('Itinéraire : ' + k);
+    for (const t of ts) { ln('- ' + jTacheLine(t)); const p = jPoste(t); if (p && p.des) ln('    Poste : ' + (p.num || '') + ' ' + p.des); if (t.note) ln('    Note : ' + t.note); if (t.photos.length) ln('    Photos : ' + t.photos.length); }
+  }
+  for (const [k, l] of JAUT) if (j[k]) { sec(l.toUpperCase()); ln(j[k]); }
+  ln('', 'Fiche produite par PK Terrain le ' + new Date().toLocaleDateString('fr-FR') + ' à ' + hm(Date.now()) + '.');
+  return L.join('\n').replace(/[  ]/g, ' ');
+}
+
 function obsHTML(r) {
   const list = [...r.obs].sort((a, b) => obsPk(a) - obsPk(b));
   const bor = list.filter(o => o.kind === 'borne'), open = list.filter(isOpen), done = list.filter(isDone);
@@ -1812,6 +1958,96 @@ function delVisitSheet(v) {
   <button class="btn danger" data-act="doDelVisit">Supprimer la visite</button>`;
 }
 
+/* Journal : feuilles de saisie */
+const compChoices = () => db.ref.companies.filter(c => !c.archived).sort((a, b) => compName(a).localeCompare(compName(b), 'fr'));
+function jourNewSheet(j) {
+  const cs = compChoices(), last = db.journal.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0))[0];
+  const cur = j ? j.companyId : (last && comp(last.companyId) ? last.companyId : (cs[0] ? cs[0].id : ''));
+  ui.form = { kind: 'jnew', id: j ? j.id : null, jcomp: cur };
+  if (!cs.length) return head('Nouvelle fiche') + `<p class="sh-lead">Ajoute d’abord tes entreprises (onglet Entreprises), ou importe le paquet mission.</p><button class="btn" data-act="closeSheet">Compris</button>`;
+  return head(j ? 'Date et entreprise' : 'Nouvelle fiche du jour') + `
+  <div class="field"><span class="lbl">Entreprise</span><div class="chips">${cs.map(c => chip('jcomp', c.id, compName(c), c.id === cur)).join('')}</div></div>
+  <div class="field"><label class="lbl" for="jn-date">Date</label><input id="jn-date" type="date" value="${esc(j ? j.date : todayISO())}"></div>
+  <button class="btn ${j ? '' : 'red'}" data-act="${j ? 'saveJourHead' : 'createJour'}">${j ? 'Enregistrer' : 'Ouvrir la fiche'}</button>`;
+}
+const timeField = (id, label, v) => `<div class="field"><label class="lbl" for="${id}">${label}</label><input id="${id}" type="time" value="${esc(v || '')}"></div>`;
+function jourCondSheet(j) {
+  ui.form = { kind: 'jcond', id: j.id, jm1: j.meteo1 || '', jm2: j.meteo2 || '' };
+  const M2 = METEO.concat(['Forte pluie']);
+  return head('Conditions du jour') + `
+  <div class="field"><span class="lbl">Météo le matin</span><div class="chips">${M2.map(o => chip('jm1', o, o, j.meteo1 === o)).join('')}</div></div>
+  <div class="field"><span class="lbl">Météo l’après-midi</span><div class="chips">${M2.map(o => chip('jm2', o, o, j.meteo2 === o)).join('')}</div></div>
+  <div class="grid2">${timeField('jc-h1', 'Début du chantier', j.h1)}${timeField('jc-h2', 'Fin du chantier', j.h2)}</div>
+  ${fieldText('jc-arr', 'Arrêt pour intempéries (heures)', j.arretH != null ? String(j.arretH).replace('.', ',') : '', 'Ex. 2', { mode: 'decimal' })}
+  <button class="btn" data-act="saveJourCond">Enregistrer</button>`;
+}
+const numGrid = (pre, list, vals) => `<div class="qiti">${list.map(([k, l]) => `<label>${esc(l)}<input id="${pre}-${k}" type="number" inputmode="numeric" min="0" step="1" value="${vals[k] != null ? vals[k] : ''}" placeholder="0"></label>`).join('')}</div>`;
+function jourPersSheet(j) {
+  ui.form = { kind: 'jpers', id: j.id };
+  return head('Personnel présent') + `<p class="sh-lead">Effectifs de l’entreprise sur le chantier aujourd’hui.</p>
+  ${numGrid('jp', JPERS, j.personnel)}
+  ${fieldArea('jp-note', 'Observation (facultatif)', j.persNote, 'Ex. chef de chantier absent, 4 ouvriers recrutés au village', 2)}
+  <button class="btn" data-act="saveJourPers">Enregistrer</button>`;
+}
+function jourMatSheet(j) {
+  ui.form = { kind: 'jmat', id: j.id };
+  return head('Matériel présent') + `<p class="sh-lead">Nombre d’engins de l’entreprise sur le chantier aujourd’hui.</p>
+  ${numGrid('jx', JMAT, j.materiel)}
+  ${fieldText('jx-aut', 'Autres engins : lesquels ?', j.matAutres, 'Ex. camion grue')}
+  ${fieldArea('jx-pan', 'En panne ou immobilisé (facultatif)', j.matPanne, 'Ex. niveleuse en panne depuis lundi', 2)}
+  <button class="btn" data-act="saveJourMat">Enregistrer</button>`;
+}
+function jourTacheSheet(mode, j, t) {
+  const c = comp(j.companyId), rs = compRoutes(c), ps = compPostes(c).slice().sort((a, b) => String(a.num).localeCompare(String(b.num), 'fr', { numeric: true }));
+  const prevT = !t && j.taches.length ? j.taches[j.taches.length - 1] : null;
+  const rid = t ? (t.routeId || (t.itiNom ? '__txt' : '')) : (prevT ? (prevT.routeId || (prevT.itiNom ? '__txt' : '')) : (rs.length === 1 ? rs[0].id : ''));
+  ui.form = { kind: 'jtache', mode, jourId: j.id, id: t ? t.id : null, jact: t ? t.act || '' : '', jetat: t ? t.etat || '' : 'cours', photos: t ? [...t.photos] : [] };
+  const F = ui.form;
+  const opts = rs.map(r => `<option value="${r.id}"${r.id === rid ? ' selected' : ''}>${esc(routeTitle(r))}</option>`).join('');
+  const custom = F.jact && !JACTS.includes(F.jact);
+  if (custom) F.jact = 'Autre';   // activité libre : elle est réécrite dans « Précision »
+  return head(mode === 'edit' ? 'Modifier la tâche' : 'Nouvelle tâche') + `
+  <div class="field"><label class="lbl" for="jt-iti">Itinéraire</label><select id="jt-iti"><option value=""${rid === '' ? ' selected' : ''}>Général (hors itinéraire)</option>${opts}<option value="__txt"${rid === '__txt' ? ' selected' : ''}>Autre itinéraire (à saisir)…</option></select></div>
+  <div id="jt-itibox"${rid === '__txt' ? '' : ' hidden'}>${fieldText('jt-itin', 'Nom de l’itinéraire', t ? t.itiNom : (prevT && !prevT.routeId ? prevT.itiNom : ''), 'Ex. Kona – Mamouroudougou – Tiékoronidougou')}</div>
+  <div class="field"><span class="lbl">Activité</span><div class="chips">${JACTS.map(a => chip('jact', a, a, F.jact === a || (a === 'Autre' && custom))).join('')}</div></div>
+  ${fieldText('jt-prec', 'Précision', t ? (custom ? [t.act, t.prec].filter(Boolean).join(' – ') : t.prec) : '', 'Ex. buse Ø1000, tête amont ; ou nom de l’activité si « Autre »')}
+  <div class="grid2">${fieldText('jt-pk1', 'PK début', t ? pkTxt(t.pk1) : '', 'Ex. 2+350')}${fieldText('jt-pk2', 'PK fin', t ? pkTxt(t.pk2) : '', 'Ex. 3+100')}</div>
+  ${ps.length ? `<div class="field"><label class="lbl" for="jt-poste">Poste du bordereau (facultatif)</label><select id="jt-poste"><option value="">—</option>${ps.map(p => `<option value="${p.id}"${t && t.posteId === p.id ? ' selected' : ''}>${esc((p.num ? p.num + ' – ' : '') + (p.des || '') + (p.unit ? ' (' + p.unit + ')' : ''))}</option>`).join('')}</select></div>` : ''}
+  <div class="grid2 code2">${fieldText('jt-qty', 'Quantité exécutée', t && t.qty != null ? String(t.qty).replace('.', ',') : '', 'Ex. 350', { mode: 'decimal' })}${fieldText('jt-unit', 'Unité', t ? t.unit : '', 'ml, m³, km, u…')}</div>
+  <div class="field"><span class="lbl">État</span><div class="chips">${Object.entries(JETAT).map(([k, l]) => chip('jetat', k, l, F.jetat === k)).join('')}</div></div>
+  ${fieldArea('jt-note', 'Note (facultatif)', t && t.note, 'Ex. bétonnage arrêté par la pluie à 15 h', 2)}
+  ${photoField(F)}
+  <div class="grid2">${mode === 'edit' ? `<button class="btn danger" data-act="delTache" data-arg="${t.id}">Supprimer</button>` : ''}<button class="btn ${mode === 'edit' ? '' : 'span2'}" data-act="saveTache">Enregistrer</button></div>`;
+}
+function jourAutresSheet(j) {
+  ui.form = { kind: 'jaut', id: j.id, photos: [...j.photos] };
+  const ph = { controles: 'Ex. densité in situ PK 1+200 : 96 % OPM ; réception des fouilles du dalot', incidents: 'Ex. buse épaufrée refusée au PK 3+400', hse: 'Ex. port des EPI non respecté, balisage absent', visites: 'Ex. visite du chef de mission ; réunion de chantier hebdomadaire', instructions: 'Ex. reprendre le compactage avant la couche de roulement', observations: '' };
+  return head('Autres rubriques') + JAUT.map(([k, l]) => fieldArea('ja-' + k, l, j[k], ph[k], 2)).join('') + photoField(ui.form) + `<button class="btn" data-act="saveJourAutres">Enregistrer</button>`;
+}
+function jourTextSheet(j) {
+  ui.form = { kind: 'jtext', id: j.id };
+  ui.pvText = journalText(j);
+  return head('Texte de la fiche') + `<p class="sh-lead">Partage-le en fichier ou copie-le (WhatsApp, Word, Claude).</p>
+  <pre class="pv" id="pv-txt">${esc(ui.pvText)}</pre>
+  <div class="grid2"><button class="btn" data-act="shareJour">${ICON.share}Fichier .txt</button><button class="btn ghost" data-act="copyPV">Copier le texte</button></div>`;
+}
+function delJourSheet(j) {
+  ui.form = { kind: 'deljour', id: j.id };
+  return head('Supprimer la fiche') + `<p class="sh-lead">${esc(compName(comp(j.companyId)))} · ${esc(fmtDay(j.date))} · ${esc(jourCounts(j))}</p><p class="hint">Tu pourras annuler juste après.</p><button class="btn danger" data-act="doDelJour">Supprimer la fiche</button>`;
+}
+function jourExportSheet() {
+  const months = [...new Set(db.journal.map(j => String(j.date).slice(0, 7)))].sort().reverse();
+  const cs = compChoices().filter(c => db.journal.some(j => j.companyId === c.id));
+  ui.form = { kind: 'jexp' };
+  return head('Exporter le journal') + `<p class="sh-lead">Pour préparer un rapport mensuel ou hebdomadaire : choisis la période et les entreprises, puis envoie le fichier à Claude.</p>
+  <div class="field"><label class="lbl" for="je-mois">Mois</label><select id="je-mois">${months.map(m => `<option value="${m}">${esc(monthLabel(m + '-15'))}</option>`).join('')}<option value="">Toute la période</option></select></div>
+  <div class="grid2"><div class="field"><label class="lbl" for="je-du">Ou du</label><input id="je-du" type="date"></div><div class="field"><label class="lbl" for="je-au">au</label><input id="je-au" type="date"></div></div>
+  <p class="hint">Les dates « du / au » remplacent le mois (utile pour une semaine).</p>
+  <div class="field"><span class="lbl">Entreprises</span><div class="radios">${cs.map(c => `<label class="radio"><input type="checkbox" name="je-c" value="${c.id}" checked><span><b>${esc(compName(c))}</b></span></label>`).join('')}</div></div>
+  <label class="check"><input type="checkbox" id="je-ph" checked><span>Joindre les photos<br><small>Pour les planches photos du rapport. Le fichier est plus lourd.</small></span></label>
+  <div class="grid2"><button class="btn" data-act="doJourExport" data-arg="json">${ICON.share}Fichier pour Claude</button><button class="btn ghost" data-act="doJourExport" data-arg="csv">Tableau .csv</button></div>`;
+}
+
 function constatSheet(mode, o, snap) {
   const r = getRoute(ui.routeId);
   ui.form = { kind: 'obs', mode, id: o ? o.id : null, type: o ? o.type : null, cote: o ? o.cote : 'A', grav: o ? o.grav : 2, snap, pk0: o ? o.pk : null, pick: mode === 'live' ? null : ['o'], pickT: 'o', photos: o ? [...(o.photos || [])] : [], statut: o && o.statut === 'leve' ? 'leve' : 'ouvert', statut0: o ? o.statut : null, photosApres: o ? [...(o.photosApres || [])] : [] };
@@ -2076,13 +2312,56 @@ function doExport(kind, r) {
   if (kind === 'table') return shareFile(base + '_tableau-PK-' + ui.step + 'm.csv', 'text/csv', tableCSV(r));
   if (kind === 'kml') return shareFile(base + '.kml', 'application/vnd.google-earth.kml+xml', routeKML(r));
 }
+/* Export du journal : JSON détaillé (pour Claude et les rapports) ou tableau CSV (une ligne par tâche). */
+function journalSel(du, au, ids) {
+  return db.journal.filter(j => ids.includes(j.companyId) && (!du || j.date >= du) && (!au || j.date <= au))
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)) || compName(comp(a.companyId)).localeCompare(compName(comp(b.companyId)), 'fr'));
+}
+function jFiche(j) {
+  const c = comp(j.companyId), m = jMkt(j);
+  return {
+    id: j.id, date: j.date, entreprise: compName(c), entrepriseId: j.companyId, lot: m ? m.lot || '' : '', marche: m ? mktLabel(m) : '',
+    meteo: { matin: j.meteo1 || '', apresMidi: j.meteo2 || '' }, horaires: { debut: j.h1 || '', fin: j.h2 || '' }, arretIntemperiesHeures: j.arretH ?? null,
+    personnel: Object.fromEntries(JPERS.map(([k]) => [k, j.personnel[k] || 0])), personnelTotal: jSum(j.personnel), personnelObservation: j.persNote || '',
+    materiel: Object.fromEntries(JMAT.map(([k]) => [k, j.materiel[k] || 0])), materielAutresPrecision: j.matAutres || '', materielPanne: j.matPanne || '',
+    taches: j.taches.map(t => { const p = jPoste(t), r = t.routeId && getRoute(t.routeId); return { id: t.id, itineraire: jIti(t), itineraireId: t.routeId || null, itineraireCode: r ? r.code || '' : '', activite: t.act || '', precision: t.prec || '', pkDebut: pkTxt(t.pk1), pkFin: pkTxt(t.pk2), pkDebutM: t.pk1 ?? null, pkFinM: t.pk2 ?? null, quantite: t.qty ?? null, unite: t.unit || '', posteNum: p ? p.num || '' : '', posteDesignation: p ? p.des || '' : '', etat: JETAT[t.etat] || '', note: t.note || '', photos: t.photos }; }),
+    controles: j.controles || '', incidents: j.incidents || '', hse: j.hse || '', visites: j.visites || '', instructions: j.instructions || '', observations: j.observations || '', photos: j.photos
+  };
+}
+async function journalJSON(du, au, ids, withPhotos) {
+  const js = journalSel(du, au, ids), cs = ids.map(comp).filter(Boolean);
+  const out = {
+    app: 'PK Terrain', kind: 'journal-chantier', v: 1, exported: new Date().toISOString(), periode: { du: du || (js[0] && js[0].date) || '', au: au || (js.length && js[js.length - 1].date) || '' },
+    controleur: db.ref.profile || {}, mission: db.ref.mission || {},
+    entreprises: cs.map(c => ({ id: c.id, sigle: c.sigle || '', nom: c.nom || '', marches: mktsOf(c).map(m => ({ id: m.id, lot: m.lot || '', intitule: m.intitule || '', numero: m.numero || '' })), itineraires: compRoutes(c).map(r => ({ id: r.id, code: r.code || '', nom: r.name, longueurKm: r.longueurKm ?? null })) })),
+    fiches: js.map(jFiche), photos: []
+  };
+  if (withPhotos && canPhoto()) {
+    for (const j of js) {
+      const ctx = [];
+      for (const t of j.taches) for (const id of t.photos) ctx.push({ id, ficheId: j.id, date: j.date, entreprise: compName(comp(j.companyId)), itineraire: jIti(t), tacheId: t.id, activite: [t.act, t.prec].filter(Boolean).join(' – '), pk: pkTxt(t.pk1) });
+      for (const id of j.photos) ctx.push({ id, ficheId: j.id, date: j.date, entreprise: compName(comp(j.companyId)), itineraire: '', tacheId: null, activite: '', pk: '' });
+      for (const x of ctx) { try { const p = await photoGet(x.id); if (p && p.blob) out.photos.push(Object.assign(x, { type: p.blob.type, w: p.w, h: p.h, t: p.t, lat: p.lat, lon: p.lon, data: await blobToB64(p.blob) })); } catch (e) { } }
+    }
+  }
+  return { out, n: js.length };
+}
+function journalCSV(du, au, ids) {
+  const rows = [['Date', 'Entreprise', 'Lot', 'Itinéraire', 'Activité', 'Précision', 'PK début', 'PK fin', 'Quantité', 'Unité', 'N° de prix', 'Désignation du poste', 'État', 'Note', 'Météo matin', 'Météo après-midi', 'Début', 'Fin', 'Arrêt intempéries (h)', 'Personnel', 'Engins', 'Photos']];
+  for (const j of journalSel(du, au, ids)) {
+    const f = jFiche(j), base = [f.date, f.entreprise, f.lot], tail = [f.meteo.matin, f.meteo.apresMidi, f.horaires.debut, f.horaires.fin, f.arretIntemperiesHeures != null ? String(f.arretIntemperiesHeures).replace('.', ',') : '', f.personnelTotal, jSum(j.materiel)];
+    if (!f.taches.length) rows.push(base.concat(['', 'Pas de travaux', '', '', '', '', '', '', '', '', '', '']).concat(tail, [j.photos.length || '']));
+    for (const t of f.taches) rows.push(base.concat([t.itineraire, t.activite, t.precision, t.pkDebut, t.pkFin, t.quantite != null ? String(t.quantite).replace('.', ',') : '', t.unite, t.posteNum, t.posteDesignation, t.etat, t.note]).concat(tail, [t.photos.length || '']));
+  }
+  return csv(rows);
+}
 const blobToB64 = b => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = () => rej(fr.error); fr.readAsDataURL(b); });
 function b64ToBlob(s, type) { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: type || 'image/jpeg' }); }
 async function doBackup(withPhotos) {
   await save(true);
-  if (!db.routes.length && !db.ref.companies.length) return toast('Rien à sauvegarder pour l’instant.', 'warn');
+  if (!db.routes.length && !db.ref.companies.length && !db.journal.length) return toast('Rien à sauvegarder pour l’instant.', 'warn');
   toast('Préparation de la sauvegarde…');
-  const out = { app: 'PK Terrain', kind: 'sauvegarde', v: 3, exported: new Date().toISOString(), state: { ref: db.ref, settings: db.settings }, routes: db.routes, visits: db.visits, photos: [] };
+  const out = { app: 'PK Terrain', kind: 'sauvegarde', v: 3, exported: new Date().toISOString(), state: { ref: db.ref, settings: db.settings }, routes: db.routes, visits: db.visits, journal: db.journal, photos: [] };
   if (withPhotos && canPhoto()) {
     for (const id of referencedPhotos(false)) {
       try { const p = await photoGet(id); if (p && p.blob) out.photos.push({ id: p.id, type: p.blob.type, w: p.w, h: p.h, t: p.t, lat: p.lat, lon: p.lon, data: await blobToB64(p.blob) }); } catch (e) { }
@@ -2120,6 +2399,13 @@ async function importFile(text) {
     if (i < 0) { db.visits.push(v); Store.vmark(v.id); nvis++; }
     else if ((v.updated || 0) > (db.visits[i].updated || 0)) { db.visits[i] = v; Store.vmark(v.id); nvis++; }
   }
+  let njr = 0;
+  for (const j0 of Array.isArray(data.journal) ? data.journal : []) {
+    if (!j0 || !j0.id) continue;
+    const j = normJour(j0), i = db.journal.findIndex(x => x.id === j.id);
+    if (i < 0) { db.journal.push(j); Store.jmark(j.id); njr++; }
+    else if ((j.updated || 0) > (db.journal[i].updated || 0)) { db.journal[i] = j; Store.jmark(j.id); njr++; }
+  }
   let refN = 0;
   if (data.state && data.state.ref) {
     const inc = data.state.ref;
@@ -2132,7 +2418,7 @@ async function importFile(text) {
     for (const p of data.photos) { try { if (!(await photoGet(p.id))) { await photoPut({ id: p.id, blob: b64ToBlob(p.data, p.type), w: p.w, h: p.h, t: p.t || Date.now(), lat: p.lat, lon: p.lon }); ph++; } } catch (e) { } }
   }
   await save(true); closeSheet(); render();
-  toast([added || !(updated || refN || nvis) ? plural(added, 'itinéraire ajouté', 'itinéraires ajoutés') : '', updated ? plural(updated, 'mis à jour', 'mis à jour') : '', refN ? plural(refN, 'fiche de référence', 'fiches de référence') : '', nvis ? plural(nvis, 'visite', 'visites') : '', ph ? plural(ph, 'photo', 'photos') : ''].filter(Boolean).join(' · '));
+  toast([added || !(updated || refN || nvis || njr) ? plural(added, 'itinéraire ajouté', 'itinéraires ajoutés') : '', updated ? plural(updated, 'mis à jour', 'mis à jour') : '', refN ? plural(refN, 'fiche de référence', 'fiches de référence') : '', nvis ? plural(nvis, 'visite', 'visites') : '', njr ? plural(njr, 'fiche de journal', 'fiches de journal') : '', ph ? plural(ph, 'photo', 'photos') : ''].filter(Boolean).join(' · '));
 }
 function applyPaquet(pq, ids) {
   const t = pq.created ? Date.parse(pq.created) || 1 : 1;
@@ -2322,7 +2608,7 @@ const A = {
   },
   pick(v, b) {
     const g = b.dataset.group;
-    if ((g === 'meteo' || g === 'theme') && b.getAttribute('aria-pressed') === 'true') { ui.form[g] = ''; b.setAttribute('aria-pressed', 'false'); return; }
+    if ((g === 'meteo' || g === 'theme' || g === 'jm1' || g === 'jm2' || g === 'jact' || g === 'jetat') && b.getAttribute('aria-pressed') === 'true') { ui.form[g] = ''; b.setAttribute('aria-pressed', 'false'); return; }
     ui.form[g] = g === 'grav' ? +v : v;
     b.parentElement.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
     if (g === 'statut') { const bx = $('#leve-box'); if (bx) bx.hidden = v !== 'leve'; }
@@ -2562,6 +2848,114 @@ const A = {
     if (c) { ui.view = 'company'; ui.companyId = c.id; } else ui.view = 'home';
     render(); undoToast('Itinéraire supprimé');
   },
+  /* Journal de chantier */
+  journal() { closeSheet(); ui.view = 'home'; ui.home = 'jour'; render(); scrollTo(0, 0); },
+  jour(id) { if (!getJour(id)) return; closeSheet(); ui.view = 'jour'; ui.jourId = id; render(); scrollTo(0, 0); },
+  newJour() { openSheet(jourNewSheet(null)); },
+  editJour(id) { const j = getJour(id); if (j) openSheet(jourNewSheet(j)); },
+  createJour() {
+    const F = ui.form, cid = F && F.jcomp, date = val('jn-date') || todayISO();
+    if (!comp(cid)) return toast('Choisis l’entreprise.', 'warn');
+    const ex = db.journal.find(j => j.companyId === cid && j.date === date);
+    if (ex) { A.jour(ex.id); return toast('La fiche de ce jour existe déjà : la voici.'); }
+    const m = mktsOf(comp(cid)).find(x => !x.archived);
+    const j = normJour({ id: 'jr-' + uid(), date, companyId: cid, marketId: m ? m.id : null, created: Date.now() });
+    db.journal.push(j); jtouch(j); save(true); A.jour(j.id); toast('Fiche ouverte');
+  },
+  saveJourHead() {
+    const F = ui.form, j = F && getJour(F.id); if (!j) return closeSheet();
+    const cid = F.jcomp, date = val('jn-date') || j.date;
+    if (!comp(cid)) return toast('Choisis l’entreprise.', 'warn');
+    if (db.journal.some(x => x.id !== j.id && x.companyId === cid && x.date === date)) return toast('Il existe déjà une fiche pour cette entreprise à cette date.', 'warn');
+    remember('fiche du ' + fmtShort(j.date) + ' modifiée', { journal: [j] });
+    if (cid !== j.companyId) { const m = mktsOf(comp(cid)).find(x => !x.archived); j.marketId = m ? m.id : null; for (const t of j.taches) if (t.routeId && routeComp(getRoute(t.routeId)) !== comp(cid)) { t.itiNom = jIti(t); t.routeId = null; } }
+    Object.assign(j, { companyId: cid, date }); jtouch(j); save(true); closeSheet(); render(); undoToast('Fiche modifiée');
+  },
+  jourCond() { const j = getJour(ui.jourId); if (j) openSheet(jourCondSheet(j)); },
+  saveJourCond() {
+    const F = ui.form, j = F && getJour(F.id); if (!j) return closeSheet();
+    remember('conditions du jour modifiées', { journal: [j] });
+    Object.assign(j, { meteo1: F.jm1 || '', meteo2: F.jm2 || '', h1: val('jc-h1'), h2: val('jc-h2'), arretH: num(val('jc-arr')) });
+    jtouch(j); save(true); closeSheet(); render(); toast('Conditions enregistrées');
+  },
+  jourPers() { const j = getJour(ui.jourId); if (j) openSheet(jourPersSheet(j)); },
+  saveJourPers() {
+    const F = ui.form, j = F && getJour(F.id); if (!j) return closeSheet();
+    remember('personnel modifié', { journal: [j] });
+    const p = {}; for (const [k] of JPERS) { const v = num(val('jp-' + k)); if (v) p[k] = Math.max(0, Math.round(v)); }
+    j.personnel = p; j.persNote = val('jp-note'); jtouch(j); save(true); closeSheet(); render(); toast('Personnel enregistré · ' + jSum(p));
+  },
+  jourMat() { const j = getJour(ui.jourId); if (j) openSheet(jourMatSheet(j)); },
+  saveJourMat() {
+    const F = ui.form, j = F && getJour(F.id); if (!j) return closeSheet();
+    remember('matériel modifié', { journal: [j] });
+    const p = {}; for (const [k] of JMAT) { const v = num(val('jx-' + k)); if (v) p[k] = Math.max(0, Math.round(v)); }
+    j.materiel = p; j.matAutres = val('jx-aut'); j.matPanne = val('jx-pan'); jtouch(j); save(true); closeSheet(); render(); toast('Matériel enregistré · ' + jSum(p));
+  },
+  addTache() { const j = getJour(ui.jourId); if (j) openForm(jourTacheSheet('new', j, null)); },
+  editTache(id) { const j = getJour(ui.jourId), t = j && j.taches.find(x => x.id === id); if (t) openForm(jourTacheSheet('edit', j, t)); },
+  saveTache() {
+    const F = ui.form, j = F && getJour(F.jourId); if (!j) return closeSheet();
+    let act = F.jact || '', prec = val('jt-prec');
+    if (act === 'Autre' && prec) { act = prec; prec = ''; }
+    if (!act && !prec) return toast('Choisis l’activité ou décris la tâche.', 'warn');
+    const sel = val('jt-iti'), pk1 = parsePK(val('jt-pk1')), pk2 = parsePK(val('jt-pk2'));
+    if ((val('jt-pk1') && pk1 == null) || (val('jt-pk2') && pk2 == null)) return toast('PK illisible : écris par exemple 2+350.', 'warn');
+    const data = { routeId: sel && sel !== '__txt' ? sel : null, itiNom: sel === '__txt' ? val('jt-itin') : '', act: act || prec, prec: act ? prec : '', pk1, pk2: pk2 != null ? pk2 : null, posteId: val('jt-poste') || null, qty: num(val('jt-qty')), unit: val('jt-unit'), etat: F.jetat || '', note: val('jt-note'), photos: [...F.photos] };
+    if (data.pk1 != null && data.pk2 != null && data.pk2 < data.pk1) [data.pk1, data.pk2] = [data.pk2, data.pk1];
+    if (F.mode === 'edit') {
+      const t = j.taches.find(x => x.id === F.id); if (!t) return closeSheet();
+      remember('tâche modifiée', { journal: [j] }); Object.assign(t, data);
+      jtouch(j); save(true); closeSheet(); render(); return undoToast('Tâche modifiée');
+    }
+    j.taches.push(Object.assign({ id: 'tch-' + uid(), t: Date.now() }, data)); jtouch(j); save(true); closeSheet(); render(); toast('Tâche ajoutée');
+  },
+  delTache(id) {
+    const j = getJour(ui.jourId); if (!j) return closeSheet();
+    remember('tâche supprimée', { journal: [j] });
+    j.taches = j.taches.filter(t => t.id !== id); jtouch(j); save(true); closeSheet(); render(); undoToast('Tâche supprimée');
+  },
+  jourAutres() { const j = getJour(ui.jourId); if (j) openSheet(jourAutresSheet(j)); },
+  saveJourAutres() {
+    const F = ui.form, j = F && getJour(F.id); if (!j) return closeSheet();
+    remember('rubriques modifiées', { journal: [j] });
+    for (const [k] of JAUT) j[k] = val('ja-' + k);
+    j.photos = [...F.photos]; jtouch(j); save(true); closeSheet(); render(); toast('Enregistré');
+  },
+  jourPrev(_, b) {
+    const j = getJour(ui.jourId); if (!j) return;
+    const p = db.journal.filter(x => x.companyId === j.companyId && x.date < j.date).sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+    if (!p) return toast('Pas de fiche précédente pour cette entreprise.', 'warn');
+    if ((jSum(j.personnel) || jSum(j.materiel)) && !arm(b, 'Remplacer par le ' + fmtShort(p.date) + ' ?')) return;
+    remember('reprise de la fiche du ' + fmtShort(p.date), { journal: [j] });
+    Object.assign(j, { personnel: clone(p.personnel), persNote: p.persNote || '', materiel: clone(p.materiel), matAutres: p.matAutres || '', matPanne: p.matPanne || '', h1: p.h1 || '', h2: p.h2 || '' });
+    jtouch(j); save(true); render(); undoToast('Personnel, matériel et horaires repris du ' + fmtShort(p.date));
+  },
+  jourText() { const j = getJour(ui.jourId); if (j) openSheet(jourTextSheet(j)); },
+  shareJour() { const j = getJour(ui.form && ui.form.id); if (j) shareFile('Journal_' + slug(compName(comp(j.companyId))) + '_' + j.date + '.txt', 'text/plain', '﻿' + journalText(j).replace(/\n/g, '\r\n')); },
+  delJour(id) { const j = getJour(id); if (j) openSheet(delJourSheet(j)); },
+  doDelJour() {
+    const j = getJour(ui.form && ui.form.id); if (!j) return closeSheet();
+    remember('fiche du ' + fmtShort(j.date) + ' supprimée', { journal: [j], deleted: true });
+    db.journal = db.journal.filter(x => x.id !== j.id); Store.jdrop(j.id); save(true); A.journal(); undoToast('Fiche supprimée');
+  },
+  jourExport() { if (!db.journal.length) return toast('Le journal est vide.', 'warn'); openSheet(jourExportSheet()); },
+  async doJourExport(kind) {
+    const ids = [...document.querySelectorAll('input[name=je-c]:checked')].map(x => x.value);
+    if (!ids.length) return toast('Coche au moins une entreprise.', 'warn');
+    let du = val('je-du'), au = val('je-au');
+    const mo = val('je-mois');
+    if (!du && !au && mo) { const [y, mm] = mo.split('-').map(Number); du = mo + '-01'; au = mo + '-' + pad2(new Date(y, mm, 0).getDate()); }
+    if (!journalSel(du, au, ids).length) return toast('Aucune fiche sur cette période.', 'warn');
+    const name = 'journal-chantier_' + slug(ids.map(i => compName(comp(i))).join(' ')) + '_' + (mo && !val('je-du') && !val('je-au') ? mo : (du || 'debut') + '_' + (au || 'fin'));
+    if (kind === 'csv') return shareFile(name + '.csv', 'text/csv', journalCSV(du, au, ids));
+    await save(true);
+    const withPh = !!($('#je-ph') && $('#je-ph').checked);
+    toast('Préparation du fichier…');
+    const { out, n } = await journalJSON(du, au, ids, withPh);
+    const ok = await shareFile(name + '.json', 'application/json', JSON.stringify(out));
+    if (ok) toast(plural(n, 'fiche exportée', 'fiches exportées') + (out.photos.length ? ' · ' + plural(out.photos.length, 'photo', 'photos') : ''));
+  },
   closeSheet() { closeSheet(); }
 };
 
@@ -2576,6 +2970,8 @@ $('#sheet-body').addEventListener('change', e => {
   const id = e.target.id || '';
   if (id.startsWith('ph-in-')) { const f = e.target.files && e.target.files[0]; if (f) addPhoto(f, id.slice(6)); e.target.value = ''; }
   else if (id === 't-obs' || id === 'vs-iti') sheetSync();
+  else if (id === 'jt-iti') { const bx = $('#jt-itibox'); if (bx) bx.hidden = e.target.value !== '__txt'; }
+  else if (id === 'jt-poste') { const p = db.ref.postes.find(x => x.id === e.target.value), u = $('#jt-unit'); if (p && p.unit && u && !u.value.trim()) u.value = p.unit; }
 });
 $('#sheet-body').addEventListener('focusin', e => {
   const m = /^(\w+)-(km|m)$/.exec(e.target.id || ''), F = ui.form;
