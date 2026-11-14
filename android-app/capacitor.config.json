@@ -1,0 +1,10 @@
+{
+  "appId": "com.omsicoder.pkterrain",
+  "appName": "PK Terrain",
+  "webDir": "www",
+  "backgroundColor": "#12171A",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#12171A"
+  }
+}

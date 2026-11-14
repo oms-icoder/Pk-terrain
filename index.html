@@ -325,7 +325,78 @@ input[type=time]{font:500 17px/1.3 var(--f-body);color:var(--ink);background:var
 
 <script>
 'use strict';
-const APP_VERSION = '3.3';
+const APP_VERSION = '3.4';
+
+/* ---------- App Android (Capacitor) ----------
+   Le même fichier sert au site (iPhone, navigateur) et à l'app Android.
+   Dans l'app, le GPS passe par un service natif qui continue écran éteint. */
+const CAP = window.Capacitor;
+const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const isAndroid = /Android/i.test(navigator.userAgent);
+const REPO = 'oms-icoder/Pk-terrain';
+const APK_URL = 'https://github.com/' + REPO + '/releases/latest/download/PK-Terrain.apk';
+function plug(name) {
+  if (!NATIVE) return null;
+  try { return (CAP.Plugins && CAP.Plugins[name]) || (CAP.registerPlugin ? CAP.registerPlugin(name) : null); } catch (e) { return null; }
+}
+const upd = { v: null };
+const verNum = v => String(v || '').replace(/^\D+/, '').split('.').map(n => parseInt(n, 10) || 0);
+const verGt = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+async function checkApkUpdate() {
+  if (!NATIVE || !navigator.onLine) return;
+  try {
+    const last = +(localStorage.getItem('pkterrain.updchk') || 0);
+    let tag = localStorage.getItem('pkterrain.updtag');
+    if (!tag || Date.now() - last > 6 * 3600e3) {
+      const r = await fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
+      if (!r.ok) return;
+      tag = (await r.json()).tag_name || '';
+      localStorage.setItem('pkterrain.updtag', tag); localStorage.setItem('pkterrain.updchk', String(Date.now()));
+    }
+    if (tag && verGt(tag, APP_VERSION)) { upd.v = tag.replace(/^\D+/, ''); if (ui.view === 'home' && !live.mode) render(); }
+  } catch (e) { }
+}
+function openExternal(url) {
+  const B = plug('Browser');
+  if (B && B.open) return B.open({ url }).catch(() => { location.href = url; });
+  window.open(url, '_blank', 'noopener');
+}
+async function startNativeGeo() {
+  const BG = plug('BackgroundGeolocation');
+  if (!BG) { live.err = 'Module GPS de l’appli introuvable : réinstalle l’app.'; updateLive(); return; }
+  const tok = live.geoTok = (live.geoTok || 0) + 1;
+  try {
+    const id = await BG.addWatcher({
+      backgroundTitle: 'PK Terrain',
+      backgroundMessage: 'Suivi GPS en cours (tracé ou repérage).',
+      requestPermissions: true, stale: false, distanceFilter: 0
+    }, (loc, err) => {
+      if (err) {
+        if (err.code === 'NOT_AUTHORIZED') live.err = 'Accès à la position refusé. Dans les réglages du téléphone : Applications › PK Terrain › Autorisations › Position : « Autoriser seulement si l’app est en cours d’utilisation » et « Utiliser la position précise ».';
+        else live.err = 'GPS indisponible : ' + (err.message || err.code || err);
+        updateLive(); return;
+      }
+      if (!loc) return;
+      onFix({ coords: { latitude: loc.latitude, longitude: loc.longitude, accuracy: loc.accuracy, speed: loc.speed }, timestamp: loc.time || Date.now() });
+    });
+    if (tok !== live.geoTok) { BG.removeWatcher({ id }).catch(() => { }); return; }
+    live.bgId = id;
+  } catch (e) { live.err = 'GPS indisponible : ' + ((e && e.message) || e); updateLive(); }
+}
+function stopNativeGeo() {
+  live.geoTok = (live.geoTok || 0) + 1;
+  if (live.bgId == null) return;
+  const BG = plug('BackgroundGeolocation'), id = live.bgId; live.bgId = null;
+  if (BG) BG.removeWatcher({ id }).catch(() => { });
+}
+async function shareFileNative(name, blob) {
+  const FS = plug('Filesystem'), SH = plug('Share');
+  if (!FS || !SH) throw new Error('module de partage introuvable');
+  const w = await FS.writeFile({ path: name, data: await blobToB64(blob), directory: 'CACHE' });
+  try { await SH.share({ title: name, dialogTitle: 'Envoyer ' + name, files: [w.uri] }); }
+  catch (e) { if (/cancel/i.test(String((e && e.message) || e))) return false; throw e; }
+  return true;
+}
 
 /*GEO-START*/
 const RE = 6371008.8, DEG = Math.PI / 180;
@@ -797,6 +868,7 @@ const Store = {
 };
 function save(now) { if (now) return Store.flush(); Store.schedule(); }
 async function askPersist() {
+  if (NATIVE) return;
   try {
     if (!navigator.storage || !navigator.storage.persist) return;
     Store.persisted = await navigator.storage.persisted();
@@ -986,6 +1058,7 @@ const isLiveOn = r => !!live.mode && live.routeId === r.id;
 /* ---------- GPS ---------- */
 function startGeo() {
   if (db.settings.sim) { startSim(); return; }
+  if (NATIVE) { startNativeGeo(); return; }
   if (!('geolocation' in navigator)) { live.err = 'Ce navigateur ne donne pas accès au GPS.'; return; }
   if (!window.isSecureContext) { live.err = 'Le GPS ne fonctionne que si l’appli est ouverte depuis son adresse https://. Pour essayer ici, active le mode test dans les réglages.'; return; }
   live.watchId = navigator.geolocation.watchPosition(onFix, onGeoErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
@@ -1076,6 +1149,7 @@ function startLive(r, mode, visitId) {
 }
 function stopLive(doRender = true) {
   if (live.watchId != null) { navigator.geolocation.clearWatch(live.watchId); live.watchId = null; }
+  stopNativeGeo();
   if (live.simTimer) { clearInterval(live.simTimer); live.simTimer = null; }
   if (live.wake) { live.wake.release().catch(() => { }); live.wake = null; }
   const wasRec = live.mode === 'rec';
@@ -1183,6 +1257,7 @@ function homeHTML() {
   let h = `<header class="top"><span class="mark" aria-hidden="true"></span><div class="grow"><h1>PK Terrain</h1><p class="sub">${P.nom ? esc(P.nom) + (P.fonction ? ' · ' + esc(P.fonction) : '') : 'Chaînage GPS et constats par PK'}</p></div><button class="icon-btn" data-act="settings" aria-label="Réglages">${ICON.gear}</button></header>`;
   if (!window.isSecureContext && !S.sim) h += `<p class="alert warn">Appli ouverte hors https : le GPS sera bloqué. Mets-la en ligne ou active le mode test dans les réglages pour l’essayer.</p>`;
   const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  if (NATIVE && upd.v) h += `<div class="undo" role="status"><span>Nouvelle version ${esc(upd.v)} de l’app disponible.</span><button class="btn ghost sm" data-act="apk">Installer</button></div>`;
   if (isIOS && !navigator.standalone && window.isSecureContext) h += `<p class="alert info">Pour l’utiliser sans réseau : touche Partager, puis « Sur l’écran d’accueil ».</p>`;
   if (Store.mode !== 'idb') h += `<p class="alert warn">Stockage limité dans ce navigateur : les photos sont désactivées. Ouvre l’appli depuis l’écran d’accueil ou dans Safari.</p>`;
   if (undoFresh() && (undo.deleted || (undo.ref && !undo.routes.length))) h += undoBar('Dernière modification : ' + undo.label);
@@ -1781,7 +1856,7 @@ function photoField(F, key = 'photos') {
   if (!canPhoto()) return key === 'photos' ? `<p class="hint">Photos indisponibles : le stockage de ce navigateur est limité.</p>` : '';
   return `<div class="field" id="ph-field-${key}"><span class="lbl">${PHL[key]}</span>${photoInner(F, key)}</div>`;
 }
-const photoInner = (F, key) => { const L = F[key] || []; return `<div class="thumbs">${L.map(id => `<button class="thumb" data-act="viewPhoto" data-arg="${id}" aria-label="Voir la photo"><img data-photo="${id}" alt=""></button>`).join('')}</div>${L.length < MAXPH ? `<label class="btn ghost" for="ph-in-${key}">${ICON.camera}${L.length ? 'Ajouter une photo' : 'Prendre ou choisir une photo'}</label><input type="file" id="ph-in-${key}" accept="image/*" class="vh">` : `<span class="hint">${MAXPH} photos au plus.</span>`}`; };
+const photoInner = (F, key) => { const L = F[key] || []; return `<div class="thumbs">${L.map(id => `<button class="thumb" data-act="viewPhoto" data-arg="${id}" aria-label="Voir la photo"><img data-photo="${id}" alt=""></button>`).join('')}</div>${L.length < MAXPH ? (NATIVE ? `<div class="grid2"><label class="btn ghost" for="ph-cam-${key}">${ICON.camera}Photo</label><label class="btn ghost" for="ph-in-${key}">${ICON.file}Galerie</label></div><input type="file" id="ph-cam-${key}" accept="image/*" capture="environment" class="vh"><input type="file" id="ph-in-${key}" accept="image/*" class="vh">` : `<label class="btn ghost" for="ph-in-${key}">${ICON.camera}${L.length ? 'Ajouter une photo' : 'Prendre ou choisir une photo'}</label><input type="file" id="ph-in-${key}" accept="image/*" class="vh">`) : `<span class="hint">${MAXPH} photos au plus.</span>`}`; };
 function refreshPhotos(key) { const el = $('#ph-field-' + key); if (el && ui.form) { el.innerHTML = `<span class="lbl">${PHL[key]}</span>` + photoInner(ui.form, key); hydratePhotos(el); } }
 async function addPhoto(file, key) {
   const F = ui.form; if (!F || !F[key] || !canPhoto()) return;
@@ -2226,13 +2301,15 @@ function settingsSheet() {
     <button class="btn ghost" data-act="import">${ICON.file}Importer un fichier</button>
     <span class="hint">${db.lastBackup ? 'Dernière sauvegarde : ' + esc(fmtDate(db.lastBackup)) + '. ' : ''}Envoie-toi la sauvegarde par WhatsApp ou e-mail. « Importer » accepte une sauvegarde ou le paquet mission.</span></div>
   <div class="field"><span class="lbl">Stockage</span><span class="hint" id="st-info">${Store.mode === 'idb' ? 'Base interne du navigateur' : 'Stockage simple (limité, sans photos)'}</span></div>
-  <p class="note">PK Terrain · version ${APP_VERSION}</p>`;
+  ${NATIVE ? `<div class="field"><span class="lbl">Mise à jour de l’app</span><button class="btn ghost" data-act="apk">${upd.v ? 'Installer la version ' + esc(upd.v) : 'Télécharger la dernière version'}</button><span class="hint">La nouvelle version s’installe par-dessus l’ancienne : tes données sont conservées.</span></div>`
+    : isAndroid ? `<div class="field"><span class="lbl">App Android</span><button class="btn ghost" data-act="apk">Télécharger l’app Android</button><span class="hint">L’app continue d’enregistrer le tracé écran éteint. Elle a sa propre mémoire : fais d’abord une sauvegarde ici, puis importe-la dans l’app.</span></div>` : ''}
+  <p class="note">PK Terrain · version ${APP_VERSION}${NATIVE ? ' · app Android' : ''}</p>`;
 }
 async function fillStorageInfo() {
   const el = $('#st-info'); if (!el) return;
-  const parts = [Store.mode === 'idb' ? 'Base interne du navigateur' : 'Stockage simple (limité, sans photos)'];
+  const parts = [NATIVE ? 'Mémoire de l’app Android' : Store.mode === 'idb' ? 'Base interne du navigateur' : 'Stockage simple (limité, sans photos)'];
   try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); if (e.usage != null) parts.push(nf1.format(e.usage / 1048576) + ' Mo utilisés'); } } catch (e) { }
-  try { if (navigator.storage && navigator.storage.persisted) parts.push(await navigator.storage.persisted() ? 'protégé contre l’effacement automatique' : 'non protégé : fais des sauvegardes régulières'); } catch (e) { }
+  try { if (!NATIVE && navigator.storage && navigator.storage.persisted) parts.push(await navigator.storage.persisted() ? 'protégé contre l’effacement automatique' : 'non protégé : fais des sauvegardes régulières'); } catch (e) { }
   if ($('#st-info')) $('#st-info').textContent = parts.join(' · ');
 }
 
@@ -2294,6 +2371,10 @@ ${ic('pk', 'ffffffff', dotHref, 0.6)}${ic('borne', 'ff1c16c3', 'http://maps.goog
 }
 async function shareFile(name, mime, content) {
   const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
+  if (NATIVE) {
+    try { return await shareFileNative(name, blob); }
+    catch (e) { toast('Partage impossible : ' + ((e && e.message) || e), 'bad'); return false; }
+  }
   try {
     const file = new File([blob], name, { type: mime });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return true; }
@@ -2458,6 +2539,7 @@ function arm(b, label) {
 }
 function openForm(html) { openSheet(html); sheetSync(); }
 const A = {
+  apk() { openExternal(APK_URL); },
   home() { ui.view = 'home'; render(); scrollTo(0, 0); },
   company(id) { ui.view = 'company'; ui.companyId = id; render(); scrollTo(0, 0); },
   bordereau(id) { ui.view = 'bordereau'; ui.marketId = id; render(); scrollTo(0, 0); },
@@ -2968,7 +3050,7 @@ document.addEventListener('click', e => {
 $('#sheet-body').addEventListener('input', () => sheetSync());
 $('#sheet-body').addEventListener('change', e => {
   const id = e.target.id || '';
-  if (id.startsWith('ph-in-')) { const f = e.target.files && e.target.files[0]; if (f) addPhoto(f, id.slice(6)); e.target.value = ''; }
+  if (id.startsWith('ph-in-') || id.startsWith('ph-cam-')) { const f = e.target.files && e.target.files[0]; if (f) addPhoto(f, id.replace(/^ph-(in|cam)-/, '')); e.target.value = ''; }
   else if (id === 't-obs' || id === 'vs-iti') sheetSync();
   else if (id === 'jt-iti') { const bx = $('#jt-itibox'); if (bx) bx.hidden = e.target.value !== '__txt'; }
   else if (id === 'jt-poste') { const p = db.ref.postes.find(x => x.id === e.target.value), u = $('#jt-unit'); if (p && p.unit && u && !u.value.trim()) u.value = p.unit; }
@@ -2992,7 +3074,7 @@ document.addEventListener('visibilitychange', () => {
 addEventListener('pagehide', () => save(true));
 setInterval(() => { if (live.mode) updateLive(); }, 1000);
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
+if ('serviceWorker' in navigator && location.protocol === 'https:' && !NATIVE) {
   const hadCtrl = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('sw.js').catch(() => { });
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -3006,7 +3088,18 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   render();
   askPersist();
   setTimeout(gcPhotos, 8000);
+  setTimeout(checkApkUpdate, 3000);
 })();
+if (NATIVE) {
+  const App = plug('App');
+  if (App && App.addListener) App.addListener('backButton', () => {
+    if (!$('#viewer').hidden) return A.closeViewer();
+    if (!$('#sheet').hidden) return closeSheet();
+    const b = document.querySelector('header.top [aria-label="Retour"]');
+    if (b) return b.click();
+    if (App.minimizeApp) App.minimizeApp();
+  });
+}
 </script>
 </body>
 </html>

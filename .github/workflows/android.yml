@@ -1,0 +1,93 @@
+# Fabrique l'APK Android de PK Terrain à chaque mise à jour de l'appli
+# et le publie dans les « Releases » du dépôt.
+# Lien de téléchargement permanent :
+#   https://github.com/oms-icoder/Pk-terrain/releases/latest/download/PK-Terrain.apk
+name: App Android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'manifest.webmanifest'
+      - 'android-app/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier la clé de signature
+        run: |
+          if [ -z "$KS_PASS" ]; then
+            echo "::error::Le secret ANDROID_KEYSTORE_PASSWORD manque (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Version de l'appli
+        id: v
+        run: |
+          V=$(grep -oP "const APP_VERSION = '\K[^']+" index.html)
+          echo "Version : $V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Préparer le projet Android
+        working-directory: android-app
+        env:
+          APP_VERSION: ${{ steps.v.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          npm install --no-audit --no-fund --legacy-peer-deps
+          mkdir -p www
+          cp ../index.html ../manifest.webmanifest ../icon-192.png ../icon-512.png ../icon-512-maskable.png ../apple-touch-icon.png www/
+          npx cap add android
+          node scripts/patch-android.mjs
+          npx cap sync android
+
+      - name: Compiler
+        working-directory: android-app/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Signer
+        working-directory: android-app/android
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          echo "Build-tools : $BT"
+          "$BT/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          "$BT/apksigner" sign --ks ../pk-terrain.keystore --ks-key-alias pkterrain \
+            --ks-pass env:KS_PASS --key-pass env:KS_PASS --out "$GITHUB_WORKSPACE/PK-Terrain.apk" aligned.apk
+          "$BT/apksigner" verify --print-certs "$GITHUB_WORKSPACE/PK-Terrain.apk" | head -3
+
+      - name: Publier
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          TAG="v$V"
+          NOTES="PK Terrain $V pour Android. Installation : télécharge PK-Terrain.apk sur le téléphone puis ouvre-le (autoriser l'installation depuis cette source si Android le demande). Une nouvelle version s'installe par-dessus l'ancienne, les données sont conservées."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" PK-Terrain.apk --clobber
+          else
+            gh release create "$TAG" PK-Terrain.apk --title "PK Terrain $V (Android)" --notes "$NOTES" --latest
+          fi

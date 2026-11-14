@@ -1,0 +1,16 @@
+{
+  "name": "pk-terrain-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Emballage Android (Capacitor) de PK Terrain. L'appli elle-même est index.html à la racine du dépôt.",
+  "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.20",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/browser": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/share": "^7.0.0"
+  }
+}
