@@ -29,13 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Vérifier la clé de signature
-        run: |
-          if [ -z "$KS_PASS" ]; then
-            echo "::error::Le secret ANDROID_KEYSTORE_PASSWORD manque (Settings > Secrets and variables > Actions)."
-            exit 1
-          fi
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -72,6 +65,10 @@ jobs:
       - name: Signer
         working-directory: android-app/android
         run: |
+          if [ -z "$KS_PASS" ]; then
+            echo "::error::Le secret ANDROID_KEYSTORE_PASSWORD manque (Settings > Secrets and variables > Actions) : APK compilé mais non signé, non publié."
+            exit 1
+          fi
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           echo "Build-tools : $BT"
           "$BT/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
